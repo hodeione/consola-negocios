@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Consola de negocios
 
-## Getting Started
+Scraper de negocios de Google Maps por zona + consola CRM para gestionar el
+seguimiento de llamadas. Next.js (App Router) + Prisma/Postgres + Auth.js.
 
-First, run the development server:
+## Qué hace
+
+- **`/scrape`** — lanza búsquedas por lotes (varias zonas × varios tipos de
+  negocio a la vez). Cada combinación se scrapea con Playwright: recoge
+  fichas de Google Maps (nombre, dirección, teléfono, web, rating,
+  categoría) y luego rastrea la web de cada negocio en busca de emails y
+  teléfonos adicionales.
+- **`/businesses`** — consola CRM: tabla filtrable/ordenable de todos los
+  negocios, panel de detalle con historial de llamadas, edición de estado
+  / prioridad / etiquetas / próxima llamada, acciones en lote y export a
+  Excel.
+- **`/admin/users`** (solo ADMIN) — alta de agentes, cambio de rol,
+  activar/desactivar acceso, restablecer contraseña, reasignación masiva de
+  cartera entre agentes.
+- Cada `AGENT` solo ve los negocios que tiene asignados; el `ADMIN` ve y
+  reasigna todo.
+
+## Desarrollo local
+
+Requisitos: Node 20.9+.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install                # instala dependencias (postinstall genera Prisma Client)
+npm run db:dev              # levanta una Postgres local gestionada por Prisma
+npm run db:migrate          # aplica las migraciones
+npm run db:seed             # crea el usuario admin (usa SEED_ADMIN_* de .env)
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+El `.env` de ejemplo ya apunta a la Postgres local de `db:dev`. Cambia
+`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` antes de sembrar en un entorno
+que no sea tu máquina.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Comandos útiles:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run build` / `npm run lint` — verificación antes de desplegar.
+- `npm run db:studio` — explorador visual de la base de datos.
+- `npm run db:deploy` — aplica migraciones pendientes sin pedir confirmación
+  interactiva (el que se usa en producción).
 
-## Learn More
+## Despliegue
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ver [`DEPLOY.md`](./DEPLOY.md).
