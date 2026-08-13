@@ -1,6 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import {
+  ArrowRightLeft,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  Users,
+  UserPlus,
+} from "lucide-react";
 import { queuedFetch } from "@/lib/fetch-queue";
 
 interface AdminUser {
@@ -11,6 +19,15 @@ interface AdminUser {
   active: boolean;
   createdAt: string | Date;
   _count: { assignedBusiness: number };
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
 }
 
 async function errorMessageFrom(res: Response): Promise<string> {
@@ -55,15 +72,21 @@ export function AdminUsersConsole({
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        <h1 className="text-lg font-semibold text-slate-100">Usuarios</h1>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+            <Users className="h-4 w-4" strokeWidth={2.25} />
+          </span>
+          <h1 className="text-lg font-semibold tracking-tight text-slate-100">Usuarios</h1>
+        </div>
 
         {error && (
-          <div className="rounded-md border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-300">
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
             {error}
           </div>
         )}
         {notice && (
-          <div className="rounded-md border border-emerald-900 bg-emerald-950 px-3 py-2 text-sm text-emerald-300">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" strokeWidth={2.25} />
             {notice}
           </div>
         )}
@@ -76,16 +99,16 @@ export function AdminUsersConsole({
           onError={setError}
         />
 
-        <section className="overflow-hidden rounded-lg border border-slate-800">
+        <section className="surface overflow-hidden">
           <table className="w-full border-collapse text-sm">
-            <thead className="bg-slate-900 text-left text-[11px] uppercase tracking-wide text-slate-500">
+            <thead className="bg-slate-900/60 text-left text-[11px] font-medium uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-2">Nombre</th>
-                <th className="px-4 py-2">Email</th>
-                <th className="px-4 py-2">Rol</th>
-                <th className="px-4 py-2">Negocios asignados</th>
-                <th className="px-4 py-2">Estado</th>
-                <th className="px-4 py-2">Contraseña</th>
+                <th className="px-4 py-2.5">Nombre</th>
+                <th className="px-4 py-2.5">Email</th>
+                <th className="px-4 py-2.5">Rol</th>
+                <th className="px-4 py-2.5">Negocios asignados</th>
+                <th className="px-4 py-2.5">Estado</th>
+                <th className="px-4 py-2.5">Contraseña</th>
               </tr>
             </thead>
             <tbody>
@@ -124,9 +147,15 @@ function UserRow({
   const [newPassword, setNewPassword] = useState("");
 
   return (
-    <tr className="border-t border-slate-800">
-      <td className="px-4 py-2.5 text-slate-100">
-        {user.name} {isSelf && <span className="text-xs text-slate-500">(tú)</span>}
+    <tr className="border-t border-slate-800/70">
+      <td className="px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-[10px] font-semibold text-slate-300">
+            {initials(user.name)}
+          </span>
+          <span className="text-slate-100">{user.name}</span>
+          {isSelf && <span className="text-xs text-slate-500">(tú)</span>}
+        </div>
       </td>
       <td className="px-4 py-2.5 text-slate-400">{user.email}</td>
       <td className="px-4 py-2.5">
@@ -134,7 +163,7 @@ function UserRow({
           value={user.role}
           disabled={isSelf}
           onChange={(e) => onUpdate(user.id, { role: e.target.value })}
-          className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 disabled:opacity-40"
+          className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500 disabled:opacity-40"
         >
           <option value="AGENT">Agente</option>
           <option value="ADMIN">Administrador</option>
@@ -145,8 +174,10 @@ function UserRow({
         <button
           disabled={isSelf}
           onClick={() => onUpdate(user.id, { active: !user.active })}
-          className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition disabled:opacity-40 ${
-            user.active ? "bg-emerald-900 text-emerald-300" : "bg-slate-800 text-slate-500"
+          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-40 ${
+            user.active
+              ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+              : "bg-slate-500/10 text-slate-500 border border-slate-500/20"
           }`}
         >
           {user.active ? "Activo" : "Desactivado"}
@@ -170,7 +201,7 @@ function UserRow({
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Nueva (mín. 8)"
-              className="w-28 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+              className="w-28 rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
             />
             <button type="submit" className="text-xs font-semibold text-blue-400 hover:text-blue-300">
               Guardar
@@ -186,8 +217,9 @@ function UserRow({
         ) : (
           <button
             onClick={() => setResetting(true)}
-            className="text-xs font-medium text-slate-400 hover:text-slate-200"
+            className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200"
           >
+            <KeyRound className="h-3 w-3" strokeWidth={2.25} />
             Restablecer…
           </button>
         )}
@@ -233,17 +265,14 @@ function NewUserForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-800 bg-slate-900 p-4"
-    >
+    <form onSubmit={handleSubmit} className="surface flex flex-wrap items-end gap-3 p-4">
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-400">Nombre</label>
         <input
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-40 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+          className="w-40 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
         />
       </div>
       <div>
@@ -253,7 +282,7 @@ function NewUserForm({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-52 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+          className="w-52 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
         />
       </div>
       <div>
@@ -265,7 +294,7 @@ function NewUserForm({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="mín. 8 caracteres"
-          className="w-40 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+          className="w-40 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
         />
       </div>
       <div>
@@ -273,7 +302,7 @@ function NewUserForm({
         <select
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+          className="rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
         >
           <option value="AGENT">Agente</option>
           <option value="ADMIN">Administrador</option>
@@ -282,9 +311,10 @@ function NewUserForm({
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-950/40 transition hover:bg-blue-500 disabled:opacity-50"
       >
-        {submitting ? "Creando…" : "+ Nuevo usuario"}
+        {submitting ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} /> : <UserPlus className="h-4 w-4" strokeWidth={2.25} />}
+        {submitting ? "Creando…" : "Nuevo usuario"}
       </button>
     </form>
   );
@@ -326,8 +356,11 @@ function ReassignPanel({
   }
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-      <h2 className="mb-1 text-sm font-semibold text-slate-100">Reasignación masiva</h2>
+    <section className="surface p-4">
+      <div className="mb-1 flex items-center gap-2">
+        <ArrowRightLeft className="h-3.5 w-3.5 text-slate-500" strokeWidth={2.25} />
+        <h2 className="text-sm font-semibold text-slate-100">Reasignación masiva</h2>
+      </div>
       <p className="mb-3 text-xs text-slate-500">
         Mueve de golpe todos los negocios de un agente a otro — útil cuando alguien deja el equipo.
       </p>
@@ -338,7 +371,7 @@ function ReassignPanel({
             required
             value={fromUserId}
             onChange={(e) => setFromUserId(e.target.value)}
-            className="w-52 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+            className="w-52 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
           >
             <option value="" disabled>
               Elige un agente…
@@ -355,7 +388,7 @@ function ReassignPanel({
           <select
             value={toUserId}
             onChange={(e) => setToUserId(e.target.value)}
-            className="w-52 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+            className="w-52 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
           >
             <option value="">Sin asignar</option>
             {users
@@ -370,8 +403,9 @@ function ReassignPanel({
         <button
           type="submit"
           disabled={busy || !fromUserId}
-          className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-amber-950/40 transition hover:bg-amber-500 disabled:opacity-50"
         >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} /> : <ArrowRightLeft className="h-4 w-4" strokeWidth={2.25} />}
           {busy ? "Reasignando…" : "Reasignar todos"}
         </button>
       </form>

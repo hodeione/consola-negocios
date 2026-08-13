@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Loader2,
+  MapPin,
+  PhoneCall,
+  Save,
+  Star,
+  Tag,
+  UserCircle,
+  X,
+} from "lucide-react";
 import { queuedFetch } from "@/lib/fetch-queue";
 import {
   PRIORITY_LABEL,
@@ -152,27 +162,35 @@ export function BusinessDrawer({
 
   return (
     <div className="fixed inset-0 z-30 flex justify-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onClick={onClose} />
       <div className="relative flex h-full w-full max-w-xl flex-col overflow-y-auto border-l border-slate-800 bg-slate-950 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-          <h2 className="text-sm font-semibold text-slate-100">
-            {business?.name || "Cargando…"}
-          </h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-200">
-            ✕
+        <div className="flex items-center justify-between border-b border-slate-800/80 bg-slate-950/95 px-5 py-3.5 backdrop-blur-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+              <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} />
+            </span>
+            <h2 className="truncate text-sm font-semibold text-slate-100">
+              {business?.name || "Cargando…"}
+            </h2>
+          </div>
+          <button onClick={onClose} className="flex-shrink-0 rounded-md p-1 text-slate-500 transition hover:bg-slate-900 hover:text-slate-200">
+            <X className="h-4 w-4" strokeWidth={2.25} />
           </button>
         </div>
 
-        {loading && <div className="p-5 text-sm text-slate-500">Cargando…</div>}
-        {error && <div className="mx-5 mt-3 rounded-md border border-red-900 bg-red-950 px-3 py-2 text-xs text-red-300">{error}</div>}
+        {loading && (
+          <div className="flex items-center gap-2 p-5 text-sm text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} />
+            Cargando…
+          </div>
+        )}
+        {error && <div className="mx-5 mt-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
 
         {business && (
           <div className="flex flex-1 flex-col gap-5 p-5">
             {/* Datos scrapeados (solo lectura) */}
-            <section className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Datos del negocio
-              </div>
+            <section className="surface p-4 text-sm">
+              <SectionTitle>Datos del negocio</SectionTitle>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
                 <dt className="text-slate-500">Dirección</dt>
                 <dd className="text-slate-300">{business.address || "—"}</dd>
@@ -187,7 +205,7 @@ export function BusinessDrawer({
                 <dt className="text-slate-500">Web</dt>
                 <dd className="truncate text-blue-400">
                   {business.website ? (
-                    <a href={business.website} target="_blank" rel="noopener noreferrer">
+                    <a href={business.website} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {business.website}
                     </a>
                   ) : (
@@ -197,21 +215,28 @@ export function BusinessDrawer({
                 <dt className="text-slate-500">Emails</dt>
                 <dd className="text-slate-300">{business.emails.join(", ") || "—"}</dd>
                 <dt className="text-slate-500">Rating</dt>
-                <dd className="text-slate-300">{business.rating ? `${business.rating} ★` : "—"}</dd>
+                <dd className="flex items-center gap-1 text-slate-300">
+                  {business.rating ? (
+                    <>
+                      {business.rating}
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" strokeWidth={0} />
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
               </dl>
             </section>
 
             {/* Formulario de gestión */}
-            <section className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Seguimiento
-              </div>
+            <section className="surface p-4">
+              <SectionTitle>Seguimiento</SectionTitle>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Estado">
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
                   >
                     {STATUS_OPTIONS.map((s) => (
                       <option key={s} value={s}>
@@ -224,7 +249,7 @@ export function BusinessDrawer({
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
                   >
                     {PRIORITY_OPTIONS.map((p) => (
                       <option key={p} value={p}>
@@ -234,17 +259,20 @@ export function BusinessDrawer({
                   </select>
                 </Field>
                 <Field label="Persona de contacto">
-                  <input
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
-                  />
+                  <div className="relative">
+                    <UserCircle className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" strokeWidth={2} />
+                    <input
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-900/70 py-1.5 pl-8 pr-2 text-sm text-slate-100 outline-none focus:border-blue-500"
+                    />
+                  </div>
                 </Field>
                 <Field label="Cargo">
                   <input
                     value={contactRole}
                     onChange={(e) => setContactRole(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
                   />
                 </Field>
                 <Field label="Próxima llamada">
@@ -252,7 +280,7 @@ export function BusinessDrawer({
                     type="date"
                     value={nextFollowUpAt}
                     onChange={(e) => setNextFollowUpAt(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
                   />
                 </Field>
                 {isAdmin && (
@@ -260,7 +288,7 @@ export function BusinessDrawer({
                     <select
                       value={assignedToUserId}
                       onChange={(e) => setAssignedToUserId(e.target.value)}
-                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                      className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
                     >
                       <option value="">Sin asignar</option>
                       {assignableUsers.map((u) => (
@@ -278,14 +306,15 @@ export function BusinessDrawer({
                   {tags.map((t) => (
                     <span
                       key={t}
-                      className="flex items-center gap-1 rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300"
+                      className="flex items-center gap-1 rounded-full bg-slate-800/80 px-2 py-0.5 text-[11px] text-slate-300"
                     >
+                      <Tag className="h-2.5 w-2.5 text-slate-500" strokeWidth={2.5} />
                       {t}
                       <button
                         onClick={() => setTags((prev) => prev.filter((x) => x !== t))}
                         className="text-slate-500 hover:text-red-400"
                       >
-                        ×
+                        <X className="h-2.5 w-2.5" strokeWidth={3} />
                       </button>
                     </span>
                   ))}
@@ -300,7 +329,7 @@ export function BusinessDrawer({
                     }}
                     onBlur={addTag}
                     placeholder="+ añadir"
-                    className="w-24 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                    className="w-24 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
                   />
                 </div>
               </Field>
@@ -308,22 +337,21 @@ export function BusinessDrawer({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="mt-4 w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-950/40 transition hover:bg-blue-500 disabled:opacity-50"
               >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} /> : <Save className="h-4 w-4" strokeWidth={2.25} />}
                 {saving ? "Guardando…" : "Guardar cambios"}
               </button>
             </section>
 
             {/* Registrar llamada */}
-            <section className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Registrar llamada
-              </div>
+            <section className="surface p-4">
+              <SectionTitle>Registrar llamada</SectionTitle>
               <form onSubmit={handleLogCall} className="flex flex-col gap-3">
                 <select
                   value={callOutcome}
                   onChange={(e) => setCallOutcome(e.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                  className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
@@ -336,7 +364,7 @@ export function BusinessDrawer({
                   onChange={(e) => setCallNotes(e.target.value)}
                   placeholder="Notas de la llamada…"
                   rows={3}
-                  className="w-full resize-y rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                  className="w-full resize-y rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
                 />
                 <label className="flex items-center gap-2 text-xs text-slate-400">
                   <input
@@ -352,14 +380,15 @@ export function BusinessDrawer({
                     type="date"
                     value={callFollowUpDate}
                     onChange={(e) => setCallFollowUpDate(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
                   />
                 )}
                 <button
                   type="submit"
                   disabled={loggingCall}
-                  className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-950/40 transition hover:bg-emerald-500 disabled:opacity-50"
                 >
+                  {loggingCall ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} /> : <PhoneCall className="h-4 w-4" strokeWidth={2.25} />}
                   {loggingCall ? "Guardando…" : "Registrar llamada"}
                 </button>
               </form>
@@ -367,17 +396,15 @@ export function BusinessDrawer({
 
             {/* Historial */}
             <section>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Historial de llamadas
-              </div>
+              <SectionTitle>Historial de llamadas</SectionTitle>
               {business.callActivities.length === 0 ? (
                 <p className="text-xs text-slate-600">Todavía no hay llamadas registradas.</p>
               ) : (
                 <ul className="flex flex-col gap-2">
                   {business.callActivities.map((a) => (
-                    <li key={a.id} className="rounded-md border border-slate-800 bg-slate-900 p-3 text-xs">
+                    <li key={a.id} className="surface p-3 text-xs">
                       <div className="mb-1 flex items-center justify-between">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_BADGE[a.outcome]}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE[a.outcome]}`}>
                           {STATUS_LABEL[a.outcome]}
                         </span>
                         <span className="text-slate-500">
@@ -395,6 +422,10 @@ export function BusinessDrawer({
       </div>
     </div>
   );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</div>;
 }
 
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {

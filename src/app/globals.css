@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
-/* La consola usa siempre tema oscuro (coherente con el scraper original). */
+/* La consola usa siempre tema oscuro (coherente con el scraper original),
+   con un ligero degradado radial para dar algo de profundidad en vez de un
+   negro plano. */
 :root {
-  --background: #020617;
+  --background: #030712;
   --foreground: #e2e8f0;
 }
 
@@ -14,6 +16,49 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(ellipse 1200px 600px at 15% -10%, rgba(37, 99, 235, 0.08), transparent),
+    radial-gradient(ellipse 900px 500px at 100% 0%, rgba(99, 102, 241, 0.05), transparent),
+    var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Superficie elevada reutilizable: tarjetas, paneles, dropdowns. */
+@utility surface {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+  background-color: rgba(15, 23, 42, 0.6);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.24),
+    0 8px 24px -12px rgba(0, 0, 0, 0.4);
+}
+
+@utility surface-solid {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(30, 41, 59, 0.9);
+  background-color: rgba(15, 23, 42, 0.92);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.24),
+    0 8px 24px -12px rgba(0, 0, 0, 0.4);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.9);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(51, 65, 85, 0.8) transparent;
 }

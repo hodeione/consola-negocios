@@ -27,7 +27,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-slate-950 text-slate-100">
+      <body className="flex min-h-full flex-col text-slate-100">
         {session?.user && <Nav user={session.user} />}
         <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
       </body>

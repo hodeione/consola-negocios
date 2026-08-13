@@ -1,6 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Building2,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Mail,
+  Phone,
+  Search,
+  X,
+} from "lucide-react";
 import type { Business } from "@/generated/prisma/client";
 import { queuedFetch } from "@/lib/fetch-queue";
 import {
@@ -51,6 +64,15 @@ function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: st
   sp.set("sortBy", sortBy);
   sp.set("sortDir", sortDir);
   return sp.toString();
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
 }
 
 export function BusinessesConsole({
@@ -190,55 +212,70 @@ export function BusinessesConsole({
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasActiveFilters =
+    filters.status.length > 0 ||
+    filters.priority.length > 0 ||
+    filters.zone ||
+    filters.tag ||
+    filters.assignedTo ||
+    filters.dueOnly ||
+    searchInput;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* ── Tira de stats ──────────────────────────── */}
-      <div className="flex flex-shrink-0 gap-3 border-b border-slate-800 bg-slate-900 px-5 py-3">
-        <StatPill label="Total" value={stats.total} />
-        <StatPill label="Interesados" value={stats.byStatus.INTERESTED ?? 0} tone="emerald" />
+      <div className="flex flex-shrink-0 items-center gap-3 border-b border-slate-800/80 bg-slate-950/60 px-6 py-3.5">
+        <StatPill label="Total" value={stats.total} icon={Building2} tone="blue" />
+        <StatPill label="Interesados" value={stats.byStatus.INTERESTED ?? 0} icon={Phone} tone="emerald" />
         <StatPill label="Clientes" value={stats.byStatus.CUSTOMER ?? 0} tone="purple" />
         <StatPill label="Pendientes" value={stats.byStatus.PENDING ?? 0} tone="slate" />
-        <button
-          onClick={() => {
-            setPage(1);
-            setFilters((f) => ({ ...f, dueOnly: !f.dueOnly }));
-          }}
-          className={`ml-auto rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-            filters.dueOnly
-              ? "bg-amber-600 text-white"
-              : "border border-slate-700 text-slate-300 hover:border-slate-600"
-          }`}
-        >
-          📅 Toca llamar hoy
-        </button>
-        <button
-          onClick={exportCurrentView}
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-600"
-        >
-          ⬇ Exportar Excel
-        </button>
+        <div className="ml-auto flex gap-2">
+          <button
+            onClick={() => {
+              setPage(1);
+              setFilters((f) => ({ ...f, dueOnly: !f.dueOnly }));
+            }}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              filters.dueOnly
+                ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30"
+                : "border border-slate-800 text-slate-300 hover:border-slate-700"
+            }`}
+          >
+            <CalendarClock className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Toca llamar hoy
+          </button>
+          <button
+            onClick={exportCurrentView}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-slate-700"
+          >
+            <Download className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Exportar Excel
+          </button>
+        </div>
       </div>
 
       {/* ── Filtros ────────────────────────────────── */}
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-950 px-5 py-2.5">
-        <input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Buscar por nombre, dirección, web, contacto…"
-          className="w-64 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
-        />
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-slate-800/80 bg-slate-950/40 px-6 py-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" strokeWidth={2} />
+          <input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Buscar por nombre, dirección, web, contacto…"
+            className="w-64 rounded-lg border border-slate-800 bg-slate-900/70 py-1.5 pl-8 pr-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
+          />
+        </div>
         <input
           value={filters.zone}
           onChange={(e) => updateFilter("zone", e.target.value)}
           placeholder="Zona"
-          className="w-40 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+          className="w-36 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
         />
         <input
           value={filters.tag}
           onChange={(e) => updateFilter("tag", e.target.value)}
           placeholder="Etiqueta"
-          className="w-32 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+          className="w-28 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
         />
 
         <div className="flex gap-1">
@@ -247,7 +284,7 @@ export function BusinessesConsole({
               key={s}
               onClick={() => toggleMulti("status", s)}
               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
-                filters.status.includes(s) ? STATUS_BADGE[s] : "bg-slate-900 text-slate-500 border border-slate-800"
+                filters.status.includes(s) ? STATUS_BADGE[s] : "bg-slate-900/60 text-slate-500 border border-slate-800"
               }`}
               title={STATUS_LABEL[s]}
             >
@@ -262,7 +299,7 @@ export function BusinessesConsole({
               key={p}
               onClick={() => toggleMulti("priority", p)}
               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
-                filters.priority.includes(p) ? PRIORITY_BADGE[p] : "bg-slate-900 text-slate-500 border border-slate-800"
+                filters.priority.includes(p) ? PRIORITY_BADGE[p] : "bg-slate-900/60 text-slate-500 border border-slate-800"
               }`}
             >
               {PRIORITY_LABEL[p]}
@@ -274,7 +311,7 @@ export function BusinessesConsole({
           <select
             value={filters.assignedTo}
             onChange={(e) => updateFilter("assignedTo", e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+            className="rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
           >
             <option value="">Todos los agentes</option>
             <option value="unassigned">Sin asignar</option>
@@ -286,21 +323,16 @@ export function BusinessesConsole({
           </select>
         )}
 
-        {(filters.status.length > 0 ||
-          filters.priority.length > 0 ||
-          filters.zone ||
-          filters.tag ||
-          filters.assignedTo ||
-          filters.dueOnly ||
-          searchInput) && (
+        {hasActiveFilters && (
           <button
             onClick={() => {
               setSearchInput("");
               setFilters(EMPTY_FILTERS);
               setPage(1);
             }}
-            className="text-xs font-medium text-slate-500 hover:text-slate-300"
+            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-300"
           >
+            <X className="h-3 w-3" strokeWidth={2.5} />
             Limpiar filtros
           </button>
         )}
@@ -309,20 +341,20 @@ export function BusinessesConsole({
       </div>
 
       {error && (
-        <div className="flex-shrink-0 border-b border-red-900 bg-red-950 px-5 py-2 text-xs text-red-300">
+        <div className="flex-shrink-0 border-b border-red-500/20 bg-red-500/10 px-6 py-2 text-xs text-red-300">
           {error}
         </div>
       )}
 
       {/* ── Barra de acciones en lote ──────────────── */}
       {selected.size > 0 && (
-        <div className="flex flex-shrink-0 items-center gap-2 border-b border-blue-900 bg-blue-950/60 px-5 py-2">
+        <div className="flex flex-shrink-0 items-center gap-2 border-b border-blue-500/20 bg-blue-500/[0.07] px-6 py-2.5">
           <span className="text-xs font-medium text-blue-200">{selected.size} seleccionados</span>
           <select
             disabled={bulkBusy}
             defaultValue=""
             onChange={(e) => e.target.value && bulkAction({ status: e.target.value })}
-            className="rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+            className="rounded-md border border-blue-500/30 bg-slate-900 px-2 py-1 text-xs text-slate-100"
           >
             <option value="" disabled>
               Cambiar estado…
@@ -337,7 +369,7 @@ export function BusinessesConsole({
             disabled={bulkBusy}
             defaultValue=""
             onChange={(e) => e.target.value && bulkAction({ priority: e.target.value })}
-            className="rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+            className="rounded-md border border-blue-500/30 bg-slate-900 px-2 py-1 text-xs text-slate-100"
           >
             <option value="" disabled>
               Cambiar prioridad…
@@ -354,7 +386,7 @@ export function BusinessesConsole({
               disabled={bulkBusy}
               defaultValue=""
               onChange={(e) => e.target.value && bulkAction({ assignedToUserId: e.target.value })}
-              className="rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+              className="rounded-md border border-blue-500/30 bg-slate-900 px-2 py-1 text-xs text-slate-100"
             >
               <option value="" disabled>
                 Asignar a…
@@ -378,14 +410,17 @@ export function BusinessesConsole({
       {/* ── Tabla ──────────────────────────────────── */}
       <div className="flex-1 overflow-auto">
         {items.length === 0 && !loading ? (
-          <div className="flex h-full items-center justify-center text-sm text-slate-500">
-            No hay negocios que coincidan con los filtros.
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-slate-600">
+              <Building2 className="h-5 w-5" strokeWidth={1.5} />
+            </span>
+            <p className="text-sm">No hay negocios que coincidan con los filtros.</p>
           </div>
         ) : (
           <table className="w-full border-collapse text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-950">
-              <tr className="border-b border-slate-800 text-left text-[11px] uppercase tracking-wide text-slate-500">
-                <th className="w-8 px-3 py-2">
+            <thead className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm">
+              <tr className="border-b border-slate-800/80 text-left text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                <th className="w-8 px-4 py-2.5">
                   <input
                     type="checkbox"
                     checked={selected.size > 0 && selected.size === items.length}
@@ -395,7 +430,7 @@ export function BusinessesConsole({
                 </th>
                 <SortableTh label="Nombre" col="name" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
                 <SortableTh label="Zona" col="zone" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
-                <th className="px-3 py-2">Contacto</th>
+                <th className="px-3 py-2.5">Contacto</th>
                 <SortableTh label="Estado" col="status" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
                 <SortableTh label="Prioridad" col="priority" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
                 <SortableTh
@@ -405,7 +440,7 @@ export function BusinessesConsole({
                   sortDir={sortDir}
                   onClick={toggleSort}
                 />
-                {isAdmin && <th className="px-3 py-2">Asignado</th>}
+                {isAdmin && <th className="px-3 py-2.5">Asignado</th>}
               </tr>
             </thead>
             <tbody>
@@ -413,9 +448,9 @@ export function BusinessesConsole({
                 <tr
                   key={b.id}
                   onClick={() => setOpenId(b.id)}
-                  className="cursor-pointer border-b border-slate-900 hover:bg-slate-900/60"
+                  className="cursor-pointer border-b border-slate-900 transition hover:bg-slate-900/50"
                 >
-                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selected.has(b.id)}
@@ -423,31 +458,52 @@ export function BusinessesConsole({
                       className="accent-blue-600"
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2.5">
                     <div className="font-medium text-slate-100">{b.name}</div>
                     <div className="text-xs text-slate-500">{b.category || b.keyword}</div>
                   </td>
-                  <td className="px-3 py-2 text-slate-300">{b.zone}</td>
-                  <td className="px-3 py-2 text-xs text-slate-400">
-                    {b.mapsPhone && <div>{b.mapsPhone}</div>}
-                    {b.emails[0] && <div className="truncate max-w-[180px]">{b.emails[0]}</div>}
+                  <td className="px-3 py-2.5 text-slate-300">{b.zone}</td>
+                  <td className="px-3 py-2.5 text-xs text-slate-400">
+                    {b.mapsPhone && (
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="h-3 w-3 text-slate-600" strokeWidth={2} />
+                        {b.mapsPhone}
+                      </div>
+                    )}
+                    {b.emails[0] && (
+                      <div className="mt-0.5 flex max-w-[180px] items-center gap-1.5 truncate">
+                        <Mail className="h-3 w-3 flex-shrink-0 text-slate-600" strokeWidth={2} />
+                        <span className="truncate">{b.emails[0]}</span>
+                      </div>
+                    )}
                     {!b.mapsPhone && !b.emails[0] && <span className="text-slate-600">—</span>}
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_BADGE[b.status]}`}>
+                  <td className="px-3 py-2.5">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[b.status]}`}>
                       {STATUS_LABEL[b.status]}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${PRIORITY_BADGE[b.priority]}`}>
+                  <td className="px-3 py-2.5">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${PRIORITY_BADGE[b.priority]}`}>
                       {PRIORITY_LABEL[b.priority]}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-xs text-slate-400">
+                  <td className="px-3 py-2.5 text-xs text-slate-400">
                     {b.nextFollowUpAt ? new Date(b.nextFollowUpAt).toLocaleDateString("es-ES") : "—"}
                   </td>
                   {isAdmin && (
-                    <td className="px-3 py-2 text-xs text-slate-400">{b.assignedTo?.name ?? "—"}</td>
+                    <td className="px-3 py-2.5">
+                      {b.assignedTo ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-[9px] font-semibold text-slate-300">
+                            {initials(b.assignedTo.name)}
+                          </span>
+                          <span className="text-xs text-slate-400">{b.assignedTo.name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-600">—</span>
+                      )}
+                    </td>
                   )}
                 </tr>
               ))}
@@ -457,15 +513,16 @@ export function BusinessesConsole({
       </div>
 
       {/* ── Paginación ─────────────────────────────── */}
-      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-800 bg-slate-900 px-5 py-2 text-xs text-slate-400">
+      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-800/80 bg-slate-950/60 px-6 py-2.5 text-xs text-slate-400">
         <span>{total} negocios</span>
         <div className="flex items-center gap-2">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-md border border-slate-700 px-2 py-1 disabled:opacity-30"
+            className="flex items-center gap-1 rounded-md border border-slate-800 px-2 py-1 transition hover:border-slate-700 disabled:opacity-30"
           >
-            ← Anterior
+            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Anterior
           </button>
           <span>
             Página {page} de {totalPages}
@@ -473,9 +530,10 @@ export function BusinessesConsole({
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-md border border-slate-700 px-2 py-1 disabled:opacity-30"
+            className="flex items-center gap-1 rounded-md border border-slate-800 px-2 py-1 transition hover:border-slate-700 disabled:opacity-30"
           >
-            Siguiente →
+            Siguiente
+            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} />
           </button>
         </div>
       </div>
@@ -494,7 +552,17 @@ export function BusinessesConsole({
   );
 }
 
-function StatPill({ label, value, tone = "blue" }: { label: string; value: number; tone?: string }) {
+function StatPill({
+  label,
+  value,
+  tone = "blue",
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  tone?: string;
+  icon?: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+}) {
   const toneClass: Record<string, string> = {
     blue: "text-blue-300",
     emerald: "text-emerald-300",
@@ -502,9 +570,12 @@ function StatPill({ label, value, tone = "blue" }: { label: string; value: numbe
     slate: "text-slate-300",
   };
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-950 px-3 py-1.5">
-      <div className={`text-sm font-bold ${toneClass[tone]}`}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
+    <div className="flex items-center gap-2 rounded-lg border border-slate-800/80 bg-slate-900/50 px-3 py-1.5">
+      {Icon && <Icon className={`h-3.5 w-3.5 ${toneClass[tone]}`} strokeWidth={2.25} />}
+      <div>
+        <span className={`text-sm font-bold ${toneClass[tone]}`}>{value}</span>
+        <span className="ml-1.5 text-[10px] uppercase tracking-wide text-slate-500">{label}</span>
+      </div>
     </div>
   );
 }
@@ -526,9 +597,12 @@ function SortableTh({
   return (
     <th
       onClick={() => onClick(col)}
-      className={`cursor-pointer select-none px-3 py-2 hover:text-slate-300 ${active ? "text-slate-200" : ""}`}
+      className={`cursor-pointer select-none px-3 py-2.5 transition hover:text-slate-300 ${active ? "text-slate-200" : ""}`}
     >
-      {label} {active && (sortDir === "asc" ? "↑" : "↓")}
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active && (sortDir === "asc" ? <ArrowUp className="h-3 w-3" strokeWidth={2.5} /> : <ArrowDown className="h-3 w-3" strokeWidth={2.5} />)}
+      </span>
     </th>
   );
 }
@@ -550,7 +624,7 @@ function BulkTagInput({ disabled, onSubmit }: { disabled: boolean; onSubmit: (ta
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="+ etiqueta"
-        className="w-24 rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none"
+        className="w-24 rounded-md border border-blue-500/30 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none"
       />
     </form>
   );
