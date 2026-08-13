@@ -17,13 +17,12 @@ import type { ScrapeTaskUpdateInput } from "@/generated/prisma/models/ScrapeTask
 
 type TaskPatch = ScrapeTaskUpdateInput;
 
-// Tamaños de lote deliberadamente conservadores: cada ficha de Maps puede
-// tardar hasta ~10s (timeout de navegación) y se procesan en serie, así que
-// un lote grande puede acercarse o superar el maxDuration de la función
-// serverless (visto en producción: "Burgos España / cerrajero" murió a los
-// ~60s). Mejor un paso más corto y más pasos, que un paso que se corta a
-// mitad y deja la tarea en ERROR.
-const DETAIL_BATCH = 5;
+// DETAIL_BATCH es solo el nº máximo de fichas a intentar por paso;
+// `detailPlacesBatch` se corta antes por presupuesto real de tiempo
+// (ver maps.ts) así que un lote lento nunca hace que el paso supere el
+// maxDuration de la función — eso, y no el tamaño del lote, es lo que
+// realmente evita el timeout (visto en producción antes de este fix).
+const DETAIL_BATCH = 10;
 const ENRICH_BATCH = 10;
 const COLLECT_TIME_BUDGET_MS = 15000;
 
@@ -139,9 +138,11 @@ async function runCollecting(task: ScrapeTask): Promise<TaskPatch> {
 async function runDetailing(task: ScrapeTask): Promise<TaskPatch> {
   const cursor = asDetailing(task.cursor);
   const batch = cursor.links.slice(cursor.nextIndex, cursor.nextIndex + DETAIL_BATCH);
-  const newDetails = await detailPlacesBatch(batch, task.language);
+  const { details: newDetails, consumed } = await detailPlacesBatch(batch, task.language);
   const details = [...cursor.details, ...newDetails];
-  const nextIndex = cursor.nextIndex + batch.length;
+  // Avanza solo lo que realmente se procesó — si se acabó el presupuesto de
+  // tiempo a mitad de la tanda, el resto se recoge en el siguiente paso.
+  const nextIndex = cursor.nextIndex + consumed;
 
   if (nextIndex >= cursor.links.length) {
     const nextCursor: EnrichingCursor = { details, nextIndex: 0, savedCount: 0 };

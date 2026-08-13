@@ -160,6 +160,14 @@ function lastNonEmptyLine(text: string): string {
   return lines.length ? lines[lines.length - 1] : "";
 }
 
+// Timeouts cortos a propósito: en este punto la página ya cargó
+// (domcontentloaded + espera corta), así que si un campo concreto no existe
+// para este negocio, el locator debe fallar rápido en vez de esperar varios
+// segundos por cada campo — con 5-6 campos por ficha esa espera se
+// multiplicaba y llegó a agotar el maxDuration de la función (visto en
+// producción: una tanda de 5 fichas tardó más de 90s).
+const FIELD_TIMEOUT_MS = 900;
+
 async function extractPlaceDetails(page: Page, sourceUrl: string): Promise<PlaceDetails> {
   const info: PlaceDetails = {
     sourceUrl,
@@ -171,25 +179,25 @@ async function extractPlaceDetails(page: Page, sourceUrl: string): Promise<Place
     category: "",
   };
   try {
-    info.name = (await page.locator("h1").first().innerText({ timeout: 4000 })).trim();
+    info.name = (await page.locator("h1").first().innerText({ timeout: FIELD_TIMEOUT_MS })).trim();
   } catch {}
   try {
-    const raw = (await page.locator(".fontDisplayLarge").first().innerText({ timeout: 2000 }))
+    const raw = (await page.locator(".fontDisplayLarge").first().innerText({ timeout: FIELD_TIMEOUT_MS }))
       .trim()
       .replace(",", ".");
     info.rating = parseFloat(raw) || 0;
   } catch {}
   try {
-    info.category = (await page.locator("button.DkEaL").first().innerText({ timeout: 2000 })).trim();
+    info.category = (await page.locator("button.DkEaL").first().innerText({ timeout: FIELD_TIMEOUT_MS })).trim();
   } catch {}
   try {
     info.address = lastNonEmptyLine(
-      await page.locator('button[data-item-id="address"]').first().innerText({ timeout: 2500 })
+      await page.locator('button[data-item-id="address"]').first().innerText({ timeout: FIELD_TIMEOUT_MS })
     );
   } catch {}
   try {
     info.phone = lastNonEmptyLine(
-      await page.locator('button[data-item-id^="phone"]').first().innerText({ timeout: 2500 })
+      await page.locator('button[data-item-id^="phone"]').first().innerText({ timeout: FIELD_TIMEOUT_MS })
     );
   } catch {}
   try {
@@ -197,33 +205,49 @@ async function extractPlaceDetails(page: Page, sourceUrl: string): Promise<Place
       (await page
         .locator('a[data-item-id="authority"]')
         .first()
-        .getAttribute("href", { timeout: 2500 })) || ""
+        .getAttribute("href", { timeout: FIELD_TIMEOUT_MS })) || ""
     ).trim();
   } catch {}
   return info;
 }
 
+export interface DetailBatchResult {
+  details: PlaceDetails[];
+  /** Cuántos enlaces de `links` se han consumido (con éxito o sin él) —
+   *  puede ser menor que `links.length` si se acabó el presupuesto de
+   *  tiempo. El llamador debe avanzar su cursor solo por este número. */
+  consumed: number;
+}
+
 /**
  * Visita una tanda de fichas (enlaces de Maps) y extrae sus datos, dentro de
- * un único contexto/página reutilizada para toda la tanda.
+ * un único contexto/página reutilizada para toda la tanda. Se corta por
+ * presupuesto de tiempo, no solo por cantidad — así una ficha lenta nunca
+ * hace que el paso entero supere el maxDuration de la función.
  */
 export async function detailPlacesBatch(
   links: string[],
-  language: string
-): Promise<PlaceDetails[]> {
-  if (links.length === 0) return [];
+  language: string,
+  timeBudgetMs = 50000
+): Promise<DetailBatchResult> {
+  if (links.length === 0) return { details: [], consumed: 0 };
   return withPage(language, async (page) => {
     const results: PlaceDetails[] = [];
+    const deadline = Date.now() + timeBudgetMs;
+    let consumed = 0;
+
     for (const link of links) {
+      if (Date.now() > deadline) break;
+      consumed++;
       try {
-        await page.goto(link, { waitUntil: "domcontentloaded", timeout: 10000 });
+        await page.goto(link, { waitUntil: "domcontentloaded", timeout: 8000 });
         await passConsentScreenIfPresent(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(150);
         results.push(await extractPlaceDetails(page, link));
       } catch {
         // ficha no disponible / timeout — se omite y se sigue con la siguiente
       }
     }
-    return results;
+    return { details: results, consumed };
   });
 }
