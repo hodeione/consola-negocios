@@ -43,7 +43,8 @@
    se autohospeda fuera de Vercel.
 
 4. Plan: las funciones de scraping (`/api/scrape-tasks/[id]/step`) declaran
-   `maxDuration = 60` y 3 GB de memoria (`vercel.json`). El plan **Hobby**
+   `maxDuration = 60` y 2048 MB de memoria (`vercel.json`, el máximo que
+   permite el plan **Hobby** para funciones serverless). El plan **Hobby**
    permite duración de función hasta ese rango con Fluid Compute (activado
    por defecto en proyectos nuevos); si tu cuenta es más antigua o ves
    timeouts, pasa a **Pro** o reduce `maxDuration`.
