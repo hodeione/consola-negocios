@@ -17,9 +17,15 @@ import type { ScrapeTaskUpdateInput } from "@/generated/prisma/models/ScrapeTask
 
 type TaskPatch = ScrapeTaskUpdateInput;
 
-const DETAIL_BATCH = 12;
-const ENRICH_BATCH = 15;
-const COLLECT_TIME_BUDGET_MS = 20000;
+// Tamaños de lote deliberadamente conservadores: cada ficha de Maps puede
+// tardar hasta ~10s (timeout de navegación) y se procesan en serie, así que
+// un lote grande puede acercarse o superar el maxDuration de la función
+// serverless (visto en producción: "Burgos España / cerrajero" murió a los
+// ~60s). Mejor un paso más corto y más pasos, que un paso que se corta a
+// mitad y deja la tarea en ERROR.
+const DETAIL_BATCH = 5;
+const ENRICH_BATCH = 10;
+const COLLECT_TIME_BUDGET_MS = 15000;
 
 interface CollectingCursor {
   links: string[];
