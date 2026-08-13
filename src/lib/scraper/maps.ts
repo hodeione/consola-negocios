@@ -2,13 +2,13 @@
  * Scraping de Google Maps con Playwright — port de la lógica de
  * `scraperweb/scraper.py` (mismos selectores, mismo bucle de scroll).
  *
- * Cada función abre su propio contexto/página sobre el navegador compartido
- * (`getBrowser()`) y lo cierra al terminar — así cada paso de una tarea
- * (una invocación de función serverless) es independiente, pero reutiliza el
- * proceso de Chromium si la instancia sigue caliente.
+ * Cada función lanza su propio navegador (`launchBrowser()`) y lo cierra
+ * por completo al terminar — cada paso de una tarea (una invocación de
+ * función serverless) queda totalmente aislado del resto, así un fallo a
+ * mitad nunca deja el navegador en un estado que arrastre al siguiente paso.
  */
 import type { Page } from "playwright-core";
-import { getBrowser, DESKTOP_USER_AGENT } from "./browser";
+import { launchBrowser, DESKTOP_USER_AGENT } from "./browser";
 
 export interface PlaceDetails {
   sourceUrl: string;
@@ -52,17 +52,23 @@ async function passConsentScreenIfPresent(page: Page): Promise<void> {
 }
 
 async function withPage<T>(language: string, fn: (page: Page) => Promise<T>): Promise<T> {
-  const browser = await getBrowser();
-  const context = await browser.newContext({
-    locale: language,
-    userAgent: DESKTOP_USER_AGENT,
-    viewport: { width: 1280, height: 800 },
-  });
+  const browser = await launchBrowser();
   try {
-    const page = await context.newPage();
-    return await fn(page);
+    const context = await browser.newContext({
+      locale: language,
+      userAgent: DESKTOP_USER_AGENT,
+      viewport: { width: 1280, height: 800 },
+    });
+    try {
+      const page = await context.newPage();
+      return await fn(page);
+    } finally {
+      await context.close().catch(() => {});
+    }
   } finally {
-    await context.close();
+    // Cerramos el navegador entero, no solo el contexto — ver el porqué en
+    // el comentario de launchBrowser().
+    await browser.close().catch(() => {});
   }
 }
 
