@@ -1,0 +1,557 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Business } from "@/generated/prisma/client";
+import { queuedFetch } from "@/lib/fetch-queue";
+import {
+  PRIORITY_BADGE,
+  PRIORITY_LABEL,
+  PRIORITY_OPTIONS,
+  STATUS_BADGE,
+  STATUS_LABEL,
+  STATUS_OPTIONS,
+} from "@/lib/businesses/labels";
+import { BusinessDrawer } from "@/components/business-drawer";
+
+type AssignedTo = { id: string; name: string } | null;
+export type BusinessRow = Business & { assignedTo: AssignedTo };
+type SimpleUser = { id: string; name: string };
+
+interface Filters {
+  search: string;
+  status: string[];
+  priority: string[];
+  zone: string;
+  tag: string;
+  assignedTo: string; // "" | "me" | "unassigned" | userId
+  dueOnly: boolean;
+}
+
+const EMPTY_FILTERS: Filters = {
+  search: "",
+  status: [],
+  priority: [],
+  zone: "",
+  tag: "",
+  assignedTo: "",
+  dueOnly: false,
+};
+
+function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: string, sortDir: string) {
+  const sp = new URLSearchParams();
+  if (filters.search) sp.set("search", filters.search);
+  if (filters.status.length) sp.set("status", filters.status.join(","));
+  if (filters.priority.length) sp.set("priority", filters.priority.join(","));
+  if (filters.zone) sp.set("zone", filters.zone);
+  if (filters.tag) sp.set("tag", filters.tag);
+  if (filters.assignedTo) sp.set("assignedTo", filters.assignedTo);
+  if (filters.dueOnly) sp.set("dueBefore", new Date().toISOString());
+  sp.set("page", String(page));
+  sp.set("pageSize", String(pageSize));
+  sp.set("sortBy", sortBy);
+  sp.set("sortDir", sortDir);
+  return sp.toString();
+}
+
+export function BusinessesConsole({
+  initialItems,
+  initialTotal,
+  initialStats,
+  pageSize,
+  isAdmin,
+  assignableUsers,
+}: {
+  initialItems: BusinessRow[];
+  initialTotal: number;
+  initialStats: { total: number; byStatus: Record<string, number> };
+  pageSize: number;
+  isAdmin: boolean;
+  assignableUsers: SimpleUser[];
+}) {
+  const [items, setItems] = useState<BusinessRow[]>(initialItems);
+  const [total, setTotal] = useState(initialTotal);
+  const [stats, setStats] = useState(initialStats);
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [searchInput, setSearchInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const firstLoad = useRef(true);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const qs = buildQuery(filters, page, pageSize, sortBy, sortDir);
+      const [listRes, statsRes] = await Promise.all([
+        queuedFetch(`/api/businesses?${qs}`),
+        queuedFetch("/api/businesses/stats"),
+      ]);
+      if (!listRes.ok) throw new Error(`Error ${listRes.status} cargando negocios`);
+      const data = await listRes.json();
+      setItems(data.items);
+      setTotal(data.total);
+      if (statsRes.ok) setStats(await statsRes.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [filters, page, pageSize, sortBy, sortDir]);
+
+  // Evita el fetch duplicado en el primer render (ya tenemos datos del servidor).
+  useEffect(() => {
+    if (firstLoad.current) {
+      firstLoad.current = false;
+      return;
+    }
+    refresh();
+  }, [refresh]);
+
+  // Debounce del texto de búsqueda.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1);
+      setFilters((f) => ({ ...f, search: searchInput }));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
+    setPage(1);
+    setFilters((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleMulti(key: "status" | "priority", value: string) {
+    setPage(1);
+    setFilters((f) => {
+      const current = f[key];
+      const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      return { ...f, [key]: next };
+    });
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected((prev) => (prev.size === items.length ? new Set() : new Set(items.map((i) => i.id))));
+  }
+
+  function toggleSort(col: string) {
+    if (sortBy === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortBy(col);
+      setSortDir("desc");
+    }
+  }
+
+  async function bulkAction(patch: { status?: string; priority?: string; addTag?: string; assignedToUserId?: string | null }) {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const res = await queuedFetch("/api/businesses/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], ...patch }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || "Error en acción en lote");
+      setSelected(new Set());
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  function exportCurrentView() {
+    const qs = buildQuery(filters, 1, 5000, sortBy, sortDir);
+    window.open(`/api/businesses/export?${qs}`, "_blank");
+  }
+
+  function handleBusinessUpdated(updated: BusinessRow) {
+    setItems((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
+    queuedFetch("/api/businesses/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => s && setStats(s));
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* ── Tira de stats ──────────────────────────── */}
+      <div className="flex flex-shrink-0 gap-3 border-b border-slate-800 bg-slate-900 px-5 py-3">
+        <StatPill label="Total" value={stats.total} />
+        <StatPill label="Interesados" value={stats.byStatus.INTERESTED ?? 0} tone="emerald" />
+        <StatPill label="Clientes" value={stats.byStatus.CUSTOMER ?? 0} tone="purple" />
+        <StatPill label="Pendientes" value={stats.byStatus.PENDING ?? 0} tone="slate" />
+        <button
+          onClick={() => {
+            setPage(1);
+            setFilters((f) => ({ ...f, dueOnly: !f.dueOnly }));
+          }}
+          className={`ml-auto rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+            filters.dueOnly
+              ? "bg-amber-600 text-white"
+              : "border border-slate-700 text-slate-300 hover:border-slate-600"
+          }`}
+        >
+          📅 Toca llamar hoy
+        </button>
+        <button
+          onClick={exportCurrentView}
+          className="rounded-md border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-600"
+        >
+          ⬇ Exportar Excel
+        </button>
+      </div>
+
+      {/* ── Filtros ────────────────────────────────── */}
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-950 px-5 py-2.5">
+        <input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Buscar por nombre, dirección, web, contacto…"
+          className="w-64 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+        />
+        <input
+          value={filters.zone}
+          onChange={(e) => updateFilter("zone", e.target.value)}
+          placeholder="Zona"
+          className="w-40 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+        />
+        <input
+          value={filters.tag}
+          onChange={(e) => updateFilter("tag", e.target.value)}
+          placeholder="Etiqueta"
+          className="w-32 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+        />
+
+        <div className="flex gap-1">
+          {STATUS_OPTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => toggleMulti("status", s)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                filters.status.includes(s) ? STATUS_BADGE[s] : "bg-slate-900 text-slate-500 border border-slate-800"
+              }`}
+              title={STATUS_LABEL[s]}
+            >
+              {STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-1">
+          {PRIORITY_OPTIONS.map((p) => (
+            <button
+              key={p}
+              onClick={() => toggleMulti("priority", p)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                filters.priority.includes(p) ? PRIORITY_BADGE[p] : "bg-slate-900 text-slate-500 border border-slate-800"
+              }`}
+            >
+              {PRIORITY_LABEL[p]}
+            </button>
+          ))}
+        </div>
+
+        {isAdmin && (
+          <select
+            value={filters.assignedTo}
+            onChange={(e) => updateFilter("assignedTo", e.target.value)}
+            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+          >
+            <option value="">Todos los agentes</option>
+            <option value="unassigned">Sin asignar</option>
+            {assignableUsers.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {(filters.status.length > 0 ||
+          filters.priority.length > 0 ||
+          filters.zone ||
+          filters.tag ||
+          filters.assignedTo ||
+          filters.dueOnly ||
+          searchInput) && (
+          <button
+            onClick={() => {
+              setSearchInput("");
+              setFilters(EMPTY_FILTERS);
+              setPage(1);
+            }}
+            className="text-xs font-medium text-slate-500 hover:text-slate-300"
+          >
+            Limpiar filtros
+          </button>
+        )}
+
+        {loading && <span className="text-xs text-slate-600">Cargando…</span>}
+      </div>
+
+      {error && (
+        <div className="flex-shrink-0 border-b border-red-900 bg-red-950 px-5 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
+
+      {/* ── Barra de acciones en lote ──────────────── */}
+      {selected.size > 0 && (
+        <div className="flex flex-shrink-0 items-center gap-2 border-b border-blue-900 bg-blue-950/60 px-5 py-2">
+          <span className="text-xs font-medium text-blue-200">{selected.size} seleccionados</span>
+          <select
+            disabled={bulkBusy}
+            defaultValue=""
+            onChange={(e) => e.target.value && bulkAction({ status: e.target.value })}
+            className="rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+          >
+            <option value="" disabled>
+              Cambiar estado…
+            </option>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+          <select
+            disabled={bulkBusy}
+            defaultValue=""
+            onChange={(e) => e.target.value && bulkAction({ priority: e.target.value })}
+            className="rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+          >
+            <option value="" disabled>
+              Cambiar prioridad…
+            </option>
+            {PRIORITY_OPTIONS.map((p) => (
+              <option key={p} value={p}>
+                {PRIORITY_LABEL[p]}
+              </option>
+            ))}
+          </select>
+          <BulkTagInput disabled={bulkBusy} onSubmit={(tag) => bulkAction({ addTag: tag })} />
+          {isAdmin && (
+            <select
+              disabled={bulkBusy}
+              defaultValue=""
+              onChange={(e) => e.target.value && bulkAction({ assignedToUserId: e.target.value })}
+              className="rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+            >
+              <option value="" disabled>
+                Asignar a…
+              </option>
+              {assignableUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => setSelected(new Set())}
+            className="ml-auto text-xs font-medium text-blue-300 hover:text-blue-100"
+          >
+            Deseleccionar
+          </button>
+        </div>
+      )}
+
+      {/* ── Tabla ──────────────────────────────────── */}
+      <div className="flex-1 overflow-auto">
+        {items.length === 0 && !loading ? (
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">
+            No hay negocios que coincidan con los filtros.
+          </div>
+        ) : (
+          <table className="w-full border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-950">
+              <tr className="border-b border-slate-800 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                <th className="w-8 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.size > 0 && selected.size === items.length}
+                    onChange={toggleSelectAll}
+                    className="accent-blue-600"
+                  />
+                </th>
+                <SortableTh label="Nombre" col="name" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
+                <SortableTh label="Zona" col="zone" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
+                <th className="px-3 py-2">Contacto</th>
+                <SortableTh label="Estado" col="status" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
+                <SortableTh label="Prioridad" col="priority" sortBy={sortBy} sortDir={sortDir} onClick={toggleSort} />
+                <SortableTh
+                  label="Próx. llamada"
+                  col="nextFollowUpAt"
+                  sortBy={sortBy}
+                  sortDir={sortDir}
+                  onClick={toggleSort}
+                />
+                {isAdmin && <th className="px-3 py-2">Asignado</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((b) => (
+                <tr
+                  key={b.id}
+                  onClick={() => setOpenId(b.id)}
+                  className="cursor-pointer border-b border-slate-900 hover:bg-slate-900/60"
+                >
+                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(b.id)}
+                      onChange={() => toggleSelect(b.id)}
+                      className="accent-blue-600"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-slate-100">{b.name}</div>
+                    <div className="text-xs text-slate-500">{b.category || b.keyword}</div>
+                  </td>
+                  <td className="px-3 py-2 text-slate-300">{b.zone}</td>
+                  <td className="px-3 py-2 text-xs text-slate-400">
+                    {b.mapsPhone && <div>{b.mapsPhone}</div>}
+                    {b.emails[0] && <div className="truncate max-w-[180px]">{b.emails[0]}</div>}
+                    {!b.mapsPhone && !b.emails[0] && <span className="text-slate-600">—</span>}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${STATUS_BADGE[b.status]}`}>
+                      {STATUS_LABEL[b.status]}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${PRIORITY_BADGE[b.priority]}`}>
+                      {PRIORITY_LABEL[b.priority]}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-400">
+                    {b.nextFollowUpAt ? new Date(b.nextFollowUpAt).toLocaleDateString("es-ES") : "—"}
+                  </td>
+                  {isAdmin && (
+                    <td className="px-3 py-2 text-xs text-slate-400">{b.assignedTo?.name ?? "—"}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── Paginación ─────────────────────────────── */}
+      <div className="flex flex-shrink-0 items-center justify-between border-t border-slate-800 bg-slate-900 px-5 py-2 text-xs text-slate-400">
+        <span>{total} negocios</span>
+        <div className="flex items-center gap-2">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="rounded-md border border-slate-700 px-2 py-1 disabled:opacity-30"
+          >
+            ← Anterior
+          </button>
+          <span>
+            Página {page} de {totalPages}
+          </span>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="rounded-md border border-slate-700 px-2 py-1 disabled:opacity-30"
+          >
+            Siguiente →
+          </button>
+        </div>
+      </div>
+
+      {openId && (
+        <BusinessDrawer
+          key={openId}
+          businessId={openId}
+          isAdmin={isAdmin}
+          assignableUsers={assignableUsers}
+          onClose={() => setOpenId(null)}
+          onUpdated={handleBusinessUpdated}
+        />
+      )}
+    </div>
+  );
+}
+
+function StatPill({ label, value, tone = "blue" }: { label: string; value: number; tone?: string }) {
+  const toneClass: Record<string, string> = {
+    blue: "text-blue-300",
+    emerald: "text-emerald-300",
+    purple: "text-purple-300",
+    slate: "text-slate-300",
+  };
+  return (
+    <div className="rounded-md border border-slate-800 bg-slate-950 px-3 py-1.5">
+      <div className={`text-sm font-bold ${toneClass[tone]}`}>{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
+    </div>
+  );
+}
+
+function SortableTh({
+  label,
+  col,
+  sortBy,
+  sortDir,
+  onClick,
+}: {
+  label: string;
+  col: string;
+  sortBy: string;
+  sortDir: string;
+  onClick: (col: string) => void;
+}) {
+  const active = sortBy === col;
+  return (
+    <th
+      onClick={() => onClick(col)}
+      className={`cursor-pointer select-none px-3 py-2 hover:text-slate-300 ${active ? "text-slate-200" : ""}`}
+    >
+      {label} {active && (sortDir === "asc" ? "↑" : "↓")}
+    </th>
+  );
+}
+
+function BulkTagInput({ disabled, onSubmit }: { disabled: boolean; onSubmit: (tag: string) => void }) {
+  const [value, setValue] = useState("");
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!value.trim()) return;
+        onSubmit(value.trim());
+        setValue("");
+      }}
+      className="flex items-center gap-1"
+    >
+      <input
+        disabled={disabled}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="+ etiqueta"
+        className="w-24 rounded-md border border-blue-800 bg-slate-900 px-2 py-1 text-xs text-slate-100 outline-none"
+      />
+    </form>
+  );
+}

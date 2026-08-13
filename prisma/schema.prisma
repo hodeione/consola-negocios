@@ -1,0 +1,183 @@
+// Prisma schema — scraper de negocios + consola CRM
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Usuarios / roles
+// ─────────────────────────────────────────────────────────────
+enum Role {
+  ADMIN
+  AGENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(AGENT)
+  // Desactivar en vez de borrar: borrar un usuario arrastraría en cascada
+  // (onDelete: Cascade) todos los negocios que ha scrapeado.
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  batchJobs         BatchJob[]    @relation("BatchJobOwner")
+  scrapeTasks       ScrapeTask[]  @relation("ScrapeTaskOwner")
+  ownedBusinesses   Business[]    @relation("BusinessOwner")
+  assignedBusiness  Business[]    @relation("BusinessAssignee")
+  callActivities    CallActivity[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Scraping: lotes y tareas
+// ─────────────────────────────────────────────────────────────
+enum BatchJobStatus {
+  PENDING
+  RUNNING
+  DONE
+}
+
+model BatchJob {
+  id                 String         @id @default(cuid())
+  ownerId            String
+  owner              User           @relation("BatchJobOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  keywords           String[]
+  zones              String[]
+  maxResultsPerCombo Int            @default(60)
+  language           String         @default("es")
+  status             BatchJobStatus @default(PENDING)
+  createdAt          DateTime       @default(now())
+
+  tasks ScrapeTask[]
+
+  @@index([ownerId])
+  @@map("batch_jobs")
+}
+
+enum ScrapeTaskStatus {
+  PENDING
+  COLLECTING // recogiendo enlaces de resultados en Google Maps (scroll)
+  DETAILING  // visitando la ficha de cada lugar (nombre, tel., web, rating...)
+  ENRICHING  // extrayendo emails/teléfonos de la web de cada negocio
+  DONE
+  ERROR
+  CANCELLED
+}
+
+model ScrapeTask {
+  id          String           @id @default(cuid())
+  batchJobId  String
+  batchJob    BatchJob         @relation(fields: [batchJobId], references: [id], onDelete: Cascade)
+  ownerId     String
+  owner       User             @relation("ScrapeTaskOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  keyword     String
+  zone        String
+  maxResults  Int              @default(60)
+  language    String           @default("es")
+  status      ScrapeTaskStatus @default(PENDING)
+  // Estado reanudable: enlaces de Maps ya recogidos, cursor de scroll,
+  // índice del siguiente negocio a enriquecer, urls ya vistas, etc.
+  cursor      Json             @default("{}")
+  foundCount  Int              @default(0)
+  totalCount  Int              @default(0)
+  message     String           @default("")
+  error       String           @default("")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  businesses Business[]
+
+  @@index([ownerId, status])
+  @@index([batchJobId])
+  @@map("scrape_tasks")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Negocios (CRM)
+// ─────────────────────────────────────────────────────────────
+enum CallStatus {
+  PENDING
+  NO_ANSWER
+  CALLBACK_LATER
+  INTERESTED
+  NOT_INTERESTED
+  CUSTOMER
+  INVALID_NUMBER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Business {
+  id               String     @id @default(cuid())
+  ownerId          String
+  owner            User       @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  assignedToUserId String?
+  assignedTo       User?      @relation("BusinessAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  sourceTaskId     String?
+  sourceTask       ScrapeTask? @relation(fields: [sourceTaskId], references: [id], onDelete: SetNull)
+
+  // Datos scrapeados
+  name       String
+  address    String   @default("")
+  mapsPhone  String   @default("")
+  website    String   @default("")
+  emails     String[]
+  webPhones  String[]
+  rating     Float    @default(0)
+  category   String   @default("")
+  zone       String
+  keyword    String
+
+  // Gestión / CRM
+  status         CallStatus @default(PENDING)
+  priority       Priority   @default(MEDIUM)
+  contactName    String     @default("")
+  contactRole    String     @default("")
+  tags           String[]
+  nextFollowUpAt DateTime?
+  lastCalledAt   DateTime?
+
+  // Deduplicación: web normalizada, o "tel|nombre" si no hay web. Única por owner.
+  dedupeKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  callActivities CallActivity[]
+
+  @@unique([ownerId, dedupeKey])
+  @@index([ownerId, status])
+  @@index([assignedToUserId, status])
+  @@index([ownerId, nextFollowUpAt])
+  @@index([zone])
+  @@map("businesses")
+}
+
+model CallActivity {
+  id         String     @id @default(cuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outcome    CallStatus
+  notes      String     @default("")
+  createdAt  DateTime   @default(now())
+
+  @@index([businessId])
+  @@map("call_activities")
+}

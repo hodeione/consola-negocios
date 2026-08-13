@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/app/api/scrape-tasks/[id]/step/route.ts": {
+      "memory": 3008
+    }
+  }
+}
