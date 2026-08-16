@@ -51,3 +51,9 @@ next-env.d.ts
 .vercel
 .env*
 prod-check.mjs
+qa-*.mjs
+qa-*.xlsx
+
+# datos de negocios exportados/scrapeados (son datos del usuario, no código)
+negocios-*.xlsx
+negocios-local-*.xlsx

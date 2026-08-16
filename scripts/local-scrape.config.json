@@ -1,0 +1,6 @@
+{
+  "zones": ["Madrid España", "Salamanca España", "Bilbao España", "Barcelona España"],
+  "keywords": ["fontanero", "electricista", "cerrajero", "restaurante", "bar"],
+  "maxResultsPerCombo": 30,
+  "language": "es"
+}
