@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarClock,
   Check,
+  Download,
   Loader2,
   Pencil,
   Phone,
@@ -222,12 +223,21 @@ export function AdminStatsConsole({
                 </span>
               )}
             </div>
-            <button
-              onClick={() => setShowAbsenceForm((v) => !v)}
-              className="text-xs font-medium text-blue-400 hover:text-blue-300"
-            >
-              {showAbsenceForm ? "Cancelar" : "+ Vacaciones/ausencia"}
-            </button>
+            <div className="flex items-center gap-3">
+              <a
+                href={`/api/admin/time-entries/export?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`}
+                className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200"
+              >
+                <Download className="h-3 w-3" strokeWidth={2.25} />
+                Exportar horas
+              </a>
+              <button
+                onClick={() => setShowAbsenceForm((v) => !v)}
+                className="text-xs font-medium text-blue-400 hover:text-blue-300"
+              >
+                {showAbsenceForm ? "Cancelar" : "+ Vacaciones/ausencia"}
+              </button>
+            </div>
           </div>
           <p className="mb-4 text-xs text-slate-500">
             Últimos 100. Corrige un fichaje olvidado o mal cerrado con «Editar».

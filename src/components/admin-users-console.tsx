@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   ArrowRightLeft,
   CheckCircle2,
+  History,
   KeyRound,
   Loader2,
   Users,
@@ -109,6 +110,7 @@ export function AdminUsersConsole({
                 <th className="px-4 py-2.5">Negocios asignados</th>
                 <th className="px-4 py-2.5">Estado</th>
                 <th className="px-4 py-2.5">Contraseña</th>
+                <th className="px-4 py-2.5">Accesos</th>
               </tr>
             </thead>
             <tbody>
@@ -145,8 +147,23 @@ function UserRow({
 }) {
   const [resetting, setResetting] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [showEvents, setShowEvents] = useState(false);
+  const [events, setEvents] = useState<{ id: string; ip: string; userAgent: string; createdAt: string }[] | null>(null);
+
+  async function toggleEvents() {
+    if (showEvents) {
+      setShowEvents(false);
+      return;
+    }
+    setShowEvents(true);
+    if (events === null) {
+      const res = await queuedFetch(`/api/admin/users/${user.id}/login-events`);
+      if (res.ok) setEvents(await res.json());
+    }
+  }
 
   return (
+    <>
     <tr className="border-t border-slate-800/70">
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-2">
@@ -224,7 +241,37 @@ function UserRow({
           </button>
         )}
       </td>
+      <td className="px-4 py-2.5">
+        <button onClick={toggleEvents} className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200">
+          <History className="h-3 w-3" strokeWidth={2.25} />
+          {showEvents ? "Ocultar" : "Ver"}
+        </button>
+      </td>
     </tr>
+    {showEvents && (
+      <tr className="border-t border-slate-800/50 bg-slate-950/40">
+        <td colSpan={7} className="px-4 py-3">
+          {events === null ? (
+            <p className="text-xs text-slate-600">Cargando…</p>
+          ) : events.length === 0 ? (
+            <p className="text-xs text-slate-600">Sin accesos registrados todavía.</p>
+          ) : (
+            <ul className="flex flex-col gap-1 text-xs text-slate-400">
+              {events.map((e) => (
+                <li key={e.id} className="flex items-center gap-3">
+                  <span className="font-mono tabular-nums text-slate-500">
+                    {new Date(e.createdAt).toLocaleString("es-ES")}
+                  </span>
+                  {e.ip && <span>{e.ip}</span>}
+                  <span className="truncate text-slate-600">{e.userAgent}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
 

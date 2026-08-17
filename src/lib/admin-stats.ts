@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { CallStatus } from "@/generated/prisma/enums";
 
@@ -23,7 +24,7 @@ export interface AgentStats {
  * Compartido entre la página /admin/stats (SSR) y GET /api/admin/stats
  * (refrescos desde el cliente al cambiar el rango).
  */
-export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]> {
+async function getAgentStatsUncached(from: Date, to: Date): Promise<AgentStats[]> {
   const now = new Date();
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
@@ -112,6 +113,22 @@ export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]>
       dealsInRange: dealsByUser.get(u.id) ?? 0,
     };
   });
+}
+
+// getAgentStats() cruza varias tablas grandes (CallActivity, Business,
+// TimeEntry) — se pide en cada carga de /admin/stats y cada cambio de rango.
+// Se cachea 30s: suficiente para que no se recalcule en cada clic sin que la
+// pantalla se quede desactualizada de forma perceptible (no hay invalidación
+// explícita en cada mutación — con este TTL tan corto no compensa la
+// complejidad de etiquetar cada ruta que escribe en esas tablas).
+const getAgentStatsCached = unstable_cache(
+  async (fromISO: string, toISO: string) => getAgentStatsUncached(new Date(fromISO), new Date(toISO)),
+  ["admin-agent-stats"],
+  { revalidate: 30 }
+);
+
+export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]> {
+  return getAgentStatsCached(from.toISOString(), to.toISOString());
 }
 
 /** Rango [hace `days-1` días a las 00:00, hoy a las 23:59:59]. */

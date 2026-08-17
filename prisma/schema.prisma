@@ -38,6 +38,7 @@ model User {
   timeEntries       TimeEntry[]
   auditLogs         AuditLog[]
   passwordResetTokens PasswordResetToken[]
+  loginEvents       LoginEvent[]
 
   @@map("users")
 }
@@ -228,6 +229,10 @@ model Business {
   dealValue Float        @default(0)
   product   ProductType?
   closedAt  DateTime?
+  // "Cerrado" (closedAt) no es lo mismo que "cobrado" — se separan para poder
+  // ver facturado-pero-no-cobrado en las estadísticas.
+  paid      Boolean      @default(false)
+  paidAt    DateTime?
 
   // Frescura: cuándo se comprobaron por última vez estos datos (al scrapear,
   // reimportar o re-verificar la ficha). Sirve para detectar negocios con
@@ -283,4 +288,19 @@ model AuditLog {
 
   @@index([businessId, createdAt])
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Registro de inicios de sesión — quién entró, cuándo, desde dónde.
+// ─────────────────────────────────────────────────────────────
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip        String   @default("")
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("login_events")
 }

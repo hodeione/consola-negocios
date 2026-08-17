@@ -95,6 +95,8 @@ export function BusinessDrawer({
   const [dealValue, setDealValue] = useState("0");
   const [product, setProduct] = useState("");
   const [closedAt, setClosedAt] = useState("");
+  const [paid, setPaid] = useState(false);
+  const [paidAt, setPaidAt] = useState("");
 
   // Formulario de registrar llamada
   const [callOutcome, setCallOutcome] = useState("NO_ANSWER");
@@ -133,6 +135,8 @@ export function BusinessDrawer({
         setDealValue(String(data.dealValue ?? 0));
         setProduct(data.product ?? "");
         setClosedAt(toDateInputValue(data.closedAt as unknown as string | null));
+        setPaid(data.paid ?? false);
+        setPaidAt(toDateInputValue(data.paidAt as unknown as string | null));
       })
       .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)))
       .finally(() => !cancelled && setLoading(false));
@@ -158,6 +162,8 @@ export function BusinessDrawer({
           dealValue: parseFloat(dealValue.replace(",", ".")) || 0,
           product: product || null,
           closedAt: closedAt ? new Date(closedAt).toISOString() : null,
+          paid,
+          paidAt: paid && paidAt ? new Date(paidAt).toISOString() : null,
           ...(isAdmin && { assignedToUserId: assignedToUserId || null }),
         }),
       });
@@ -579,6 +585,26 @@ export function BusinessDrawer({
                     />
                   </Field>
                 </div>
+                <label className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={paid}
+                    onChange={(e) => {
+                      setPaid(e.target.checked);
+                      if (e.target.checked && !paidAt) setPaidAt(new Date().toISOString().slice(0, 10));
+                    }}
+                    className="accent-emerald-600"
+                  />
+                  Cobrado
+                  {paid && (
+                    <input
+                      type="date"
+                      value={paidAt}
+                      onChange={(e) => setPaidAt(e.target.value)}
+                      className="ml-1 rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
+                    />
+                  )}
+                </label>
               </div>
 
               <button

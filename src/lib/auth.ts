@@ -47,7 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Contraseña", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = credentials?.email;
         const password = credentials?.password;
         if (typeof email !== "string" || typeof password !== "string") return null;
@@ -57,6 +57,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
+
+        // Registro de accesos — no debe poder tumbar un login si falla por lo
+        // que sea, así que no se espera de forma bloqueante ni se propaga el error.
+        const ip = request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
+        const userAgent = request?.headers.get("user-agent") || "";
+        prisma.loginEvent.create({ data: { userId: user.id, ip, userAgent } }).catch(() => {});
 
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },

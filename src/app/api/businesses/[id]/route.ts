@@ -26,6 +26,8 @@ const patchSchema = z.object({
   dealValue: z.number().min(0).max(10_000_000).optional(),
   product: z.enum(PRODUCT).nullable().optional(),
   closedAt: z.string().datetime().nullable().optional(),
+  paid: z.boolean().optional(),
+  paidAt: z.string().datetime().nullable().optional(),
   flaggedIncorrect: z.boolean().optional(),
   flaggedIncorrectNote: z.string().max(300).optional(),
 });
@@ -76,7 +78,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.message }, { status: 400 });
 
-  const { assignedToUserId, nextFollowUpAt, closedAt, ...rest } = parsed.data;
+  const { assignedToUserId, nextFollowUpAt, closedAt, paidAt, ...rest } = parsed.data;
   if (assignedToUserId !== undefined && user.role !== "ADMIN") {
     return NextResponse.json({ error: "Sólo un administrador puede reasignar" }, { status: 403 });
   }
@@ -112,6 +114,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ...rest,
       ...(nextFollowUpAt !== undefined && { nextFollowUpAt: nextFollowUpAt ? new Date(nextFollowUpAt) : null }),
       ...(closedAt !== undefined && { closedAt: closedAt ? new Date(closedAt) : null }),
+      ...(paidAt !== undefined && { paidAt: paidAt ? new Date(paidAt) : null }),
       ...(assignedToUserId !== undefined && { assignedToUserId }),
     },
     include: { assignedTo: { select: { id: true, name: true } } },
