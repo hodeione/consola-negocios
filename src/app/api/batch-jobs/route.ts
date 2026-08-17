@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
+import { isScrapingAllowed } from "@/lib/scraper/browser";
 
 const bodySchema = z.object({
   // Vacío ("") es válido: significa "todos los tipos de negocio" en esa zona.
@@ -14,6 +15,20 @@ const bodySchema = z.object({
 export async function POST(request: NextRequest) {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  // Mismo kill switch que /api/scrape-tasks/[id]/step — bloquear aquí evita
+  // crear tareas que luego se quedarían atascadas chocando con el 403 de
+  // /step una y otra vez. Ver ese fichero para más contexto.
+  if (!isScrapingAllowed()) {
+    return NextResponse.json(
+      {
+        error:
+          "El scraping en la nube está desactivado. Usa el scraper local (npm run scrape:local) " +
+          "y sube el Excel resultante con el botón «Importar Excel».",
+      },
+      { status: 403 }
+    );
+  }
 
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {

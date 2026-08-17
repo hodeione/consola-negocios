@@ -15,6 +15,22 @@ function isServerless(): boolean {
   );
 }
 
+/**
+ * Kill switch: en Vercel el scraping consume Active CPU de la cuota del
+ * plan (una función colgada/lanzada por error puede agotarla y pausar
+ * TODOS los proyectos de la cuenta — nos pasó una vez con un script de
+ * prueba viejo). A partir de ahora el scraping "grande" corre en local
+ * (`npm run scrape:local`); las rutas serverless que lanzan Chromium
+ * quedan desactivadas en producción por defecto y solo se reactivan
+ * poniendo `SCRAPING_ENABLED=true` en las env vars del proyecto en
+ * Vercel. En local (`npm run dev` o el script local) nunca aplica, para
+ * no romper el flujo de desarrollo/pruebas habitual.
+ */
+export function isScrapingAllowed(): boolean {
+  if (!isServerless()) return true;
+  return process.env.SCRAPING_ENABLED === "true";
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -60,6 +76,13 @@ async function launchOnce(): Promise<Browser> {
  * lo resuelve.
  */
 export async function launchBrowser(): Promise<Browser> {
+  // Última línea de defensa: aunque algo llame a esta función saltándose el
+  // guard de la ruta API, en producción nunca llega a lanzar Chromium sin
+  // el flag explícito.
+  if (!isScrapingAllowed()) {
+    throw new Error("SCRAPING_DISABLED_IN_PRODUCTION");
+  }
+
   const attempts = 3;
   let lastError: unknown;
   for (let i = 0; i < attempts; i++) {
