@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 import { sendEmail, emailShell } from "@/lib/email";
+import { sendOutboundWebhook } from "@/lib/webhook";
 import { PRODUCT_LABEL } from "@/lib/businesses/labels";
 
 const CALL_STATUS = [
@@ -138,9 +139,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 async function notifyDealClosed(
-  business: { name: string; zone: string; dealValue: number; product: string | null },
+  business: { id: string; name: string; zone: string; dealValue: number; product: string | null },
   closedByName: string
 ): Promise<void> {
+  await sendOutboundWebhook("deal.closed", {
+    businessId: business.id,
+    name: business.name,
+    zone: business.zone,
+    dealValue: business.dealValue,
+    product: business.product,
+    closedBy: closedByName,
+  });
+
   const recipients = await prisma.user.findMany({ where: { active: true }, select: { email: true } });
   const amount =
     business.dealValue > 0
