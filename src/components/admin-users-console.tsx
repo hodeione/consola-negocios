@@ -11,6 +11,7 @@ import {
   Mail,
   Radar,
   ShieldCheck,
+  StickyNote,
   Users,
   UserPlus,
 } from "lucide-react";
@@ -129,6 +130,7 @@ export function AdminUsersConsole({
                 <th className="px-4 py-2.5">Estado</th>
                 <th className="px-4 py-2.5">Contraseña</th>
                 <th className="px-4 py-2.5">Accesos</th>
+                <th className="px-4 py-2.5">Notas</th>
               </tr>
             </thead>
             <tbody>
@@ -244,6 +246,10 @@ function UserRow({
   const [newPassword, setNewPassword] = useState("");
   const [showEvents, setShowEvents] = useState(false);
   const [events, setEvents] = useState<{ id: string; ip: string; userAgent: string; createdAt: string }[] | null>(null);
+  const [showNotes, setShowNotes] = useState(false);
+  const [notes, setNotes] = useState<{ id: string; body: string; createdAt: string; author: { name: string } }[] | null>(null);
+  const [newNote, setNewNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   async function toggleEvents() {
     if (showEvents) {
@@ -254,6 +260,40 @@ function UserRow({
     if (events === null) {
       const res = await queuedFetch(`/api/admin/users/${user.id}/login-events`);
       if (res.ok) setEvents(await res.json());
+    }
+  }
+
+  async function loadNotes() {
+    const res = await queuedFetch(`/api/admin/users/${user.id}/notes`);
+    if (res.ok) setNotes(await res.json());
+  }
+
+  async function toggleNotes() {
+    if (showNotes) {
+      setShowNotes(false);
+      return;
+    }
+    setShowNotes(true);
+    if (notes === null) await loadNotes();
+  }
+
+  async function addNote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newNote.trim()) return;
+    setSavingNote(true);
+    try {
+      const res = await queuedFetch(`/api/admin/users/${user.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: newNote }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setNotes((prev) => [created, ...(prev ?? [])]);
+        setNewNote("");
+      }
+    } finally {
+      setSavingNote(false);
     }
   }
 
@@ -342,10 +382,16 @@ function UserRow({
           {showEvents ? "Ocultar" : "Ver"}
         </button>
       </td>
+      <td className="px-4 py-2.5">
+        <button onClick={toggleNotes} className="flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200">
+          <StickyNote className="h-3 w-3" strokeWidth={2.25} />
+          {showNotes ? "Ocultar" : "Ver"}
+        </button>
+      </td>
     </tr>
     {showEvents && (
       <tr className="border-t border-slate-800/50 bg-slate-950/40">
-        <td colSpan={7} className="px-4 py-3">
+        <td colSpan={8} className="px-4 py-3">
           {events === null ? (
             <p className="text-xs text-slate-600">Cargando…</p>
           ) : events.length === 0 ? (
@@ -359,6 +405,44 @@ function UserRow({
                   </span>
                   {e.ip && <span>{e.ip}</span>}
                   <span className="truncate text-slate-600">{e.userAgent}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </td>
+      </tr>
+    )}
+    {showNotes && (
+      <tr className="border-t border-slate-800/50 bg-slate-950/40">
+        <td colSpan={8} className="px-4 py-3">
+          <form onSubmit={addNote} className="mb-3 flex items-end gap-2">
+            <textarea
+              value={newNote}
+              onChange={(e) => setNewNote(e.target.value)}
+              placeholder="Nota privada sobre el desempeño de esta persona (solo la ven los admins)…"
+              rows={2}
+              className="flex-1 resize-y rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={savingNote || !newNote.trim()}
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
+            >
+              {savingNote ? "…" : "Añadir"}
+            </button>
+          </form>
+          {notes === null ? (
+            <p className="text-xs text-slate-600">Cargando…</p>
+          ) : notes.length === 0 ? (
+            <p className="text-xs text-slate-600">Sin notas todavía.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {notes.map((n) => (
+                <li key={n.id} className="rounded-md bg-slate-900/60 p-2 text-xs">
+                  <p className="text-slate-300">{n.body}</p>
+                  <p className="mt-1 text-[10px] text-slate-600">
+                    {n.author.name} · {new Date(n.createdAt).toLocaleString("es-ES")}
+                  </p>
                 </li>
               ))}
             </ul>

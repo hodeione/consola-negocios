@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { after } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/generated/prisma/enums";
@@ -58,11 +59,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
 
-        // Registro de accesos — no debe poder tumbar un login si falla por lo
-        // que sea, así que no se espera de forma bloqueante ni se propaga el error.
+        // Registro de accesos — con after() para que se complete de verdad
+        // tras enviar la respuesta (en serverless, un fire-and-forget sin
+        // esto puede quedar cortado a mitad si la función se congela nada
+        // más responder); no debe poder tumbar el login si falla.
         const ip = request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
         const userAgent = request?.headers.get("user-agent") || "";
-        prisma.loginEvent.create({ data: { userId: user.id, ip, userAgent } }).catch(() => {});
+        after(() => prisma.loginEvent.create({ data: { userId: user.id, ip, userAgent } }).catch(() => {}));
 
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },

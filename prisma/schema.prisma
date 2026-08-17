@@ -39,6 +39,8 @@ model User {
   auditLogs         AuditLog[]
   passwordResetTokens PasswordResetToken[]
   loginEvents       LoginEvent[]
+  notesAboutMe      AgentNote[] @relation("AgentNoteSubject")
+  notesIWrote       AgentNote[] @relation("AgentNoteAuthor")
 
   @@map("users")
 }
@@ -303,4 +305,21 @@ model LoginEvent {
 
   @@index([userId, createdAt])
   @@map("login_events")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Notas privadas del admin sobre el desempeño de un agente — no ligadas a
+// ningún negocio en concreto (para eso ya está el Historial de cada ficha).
+// ─────────────────────────────────────────────────────────────
+model AgentNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("AgentNoteSubject", fields: [userId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("AgentNoteAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("agent_notes")
 }

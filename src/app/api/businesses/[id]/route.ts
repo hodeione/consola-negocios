@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
+import { sendEmail, emailShell } from "@/lib/email";
+import { PRODUCT_LABEL } from "@/lib/businesses/labels";
 
 const CALL_STATUS = [
   "PENDING",
@@ -126,5 +128,41 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     });
   }
 
+  // Venta nueva (pasa a Cliente por primera vez) — se avisa al equipo. Se
+  // agenda con after() para no alargar la respuesta del guardado.
+  if (rest.status === "CUSTOMER" && business.status !== "CUSTOMER") {
+    after(() => notifyDealClosed(updated, user.name));
+  }
+
   return NextResponse.json(updated);
+}
+
+async function notifyDealClosed(
+  business: { name: string; zone: string; dealValue: number; product: string | null },
+  closedByName: string
+): Promise<void> {
+  const recipients = await prisma.user.findMany({ where: { active: true }, select: { email: true } });
+  const amount =
+    business.dealValue > 0
+      ? business.dealValue.toLocaleString("es-ES", { style: "currency", currency: "EUR" })
+      : "importe sin especificar";
+  const product = business.product ? PRODUCT_LABEL[business.product] ?? business.product : "producto sin especificar";
+
+  await Promise.all(
+    recipients.map((r) =>
+      sendEmail({
+        to: r.email,
+        subject: `🎉 Nueva venta: ${business.name}`,
+        html: emailShell(
+          "Venta cerrada",
+          `
+            <p style="color:#e8edf4; font-size:15px; line-height:1.6;">
+              <strong>${closedByName}</strong> acaba de cerrar <strong>${business.name}</strong> (${business.zone})
+              — ${product}, ${amount}.
+            </p>
+          `
+        ),
+      })
+    )
+  );
 }
