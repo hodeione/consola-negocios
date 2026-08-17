@@ -129,7 +129,7 @@ export function defaultRange(days: number): { from: Date; to: Date } {
 // queda registrada en la consola, así que un hueco marcado no es una prueba
 // de que no se trabajó (pudo estar al teléfono con algo que no toca
 // registrar), es una señal para que el admin lo revise, no un veredicto.
-const IDLE_THRESHOLD_MINUTES = 45;
+const IDLE_THRESHOLD_MINUTES = 20;
 
 export interface DailyPoint {
   date: string; // YYYY-MM-DD
@@ -152,6 +152,7 @@ export interface AgentDetail {
   totalClockedMinutes: number;
   totalIdleMinutes: number;
   totalActiveMinutes: number;
+  idleThresholdMinutes: number;
 }
 
 function dayKey(d: Date): string {
@@ -260,5 +261,6 @@ export async function getAgentDetail(userId: string, from: Date, to: Date): Prom
     totalClockedMinutes: Math.round(totalClockedMs / 60_000),
     totalIdleMinutes: Math.round(totalIdleMs / 60_000),
     totalActiveMinutes: Math.round((totalClockedMs - totalIdleMs) / 60_000),
+    idleThresholdMinutes: IDLE_THRESHOLD_MINUTES,
   };
 }

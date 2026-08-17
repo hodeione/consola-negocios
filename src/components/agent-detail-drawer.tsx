@@ -24,6 +24,7 @@ interface AgentDetail {
   totalClockedMinutes: number;
   totalIdleMinutes: number;
   totalActiveMinutes: number;
+  idleThresholdMinutes: number;
 }
 
 function fmtDateTime(iso: string): string {
@@ -116,7 +117,7 @@ export function AgentDetailDrawer({
                   </div>
                   <p className="mb-3 text-xs text-slate-500">
                     Cada barra es el tiempo fichado ese día, partido entre tramos con actividad registrada (llamadas,
-                    cambios de gestión) y huecos de {45}+ min sin ninguna.
+                    cambios de gestión) y huecos de {detail.idleThresholdMinutes}+ min sin ninguna.
                   </p>
                   <ActiveIdleChart daily={detail.daily} />
                 </section>
@@ -180,7 +181,8 @@ export function AgentDetailDrawer({
               </div>
               {detail.idleGaps.length === 0 ? (
                 <p className="text-xs text-slate-600">
-                  Sin huecos de 45+ minutos sin llamadas ni cambios de gestión durante el tiempo fichado. 🎉
+                  Sin huecos de {detail.idleThresholdMinutes}+ minutos sin llamadas ni cambios de gestión durante el
+                  tiempo fichado. 🎉
                 </p>
               ) : (
                 <ul className="flex flex-col gap-1.5">
