@@ -122,3 +122,143 @@ export function defaultRange(days: number): { from: Date; to: Date } {
   from.setHours(0, 0, 0, 0);
   return { from, to };
 }
+
+// Un hueco de esta duración o más, sin ninguna llamada ni cambio de gestión
+// registrado, cuenta como "posible inactividad" mientras se está fichado.
+// No mide teclas ni ratón — solo cruza el fichaje contra la actividad que ya
+// queda registrada en la consola, así que un hueco marcado no es una prueba
+// de que no se trabajó (pudo estar al teléfono con algo que no toca
+// registrar), es una señal para que el admin lo revise, no un veredicto.
+const IDLE_THRESHOLD_MINUTES = 45;
+
+export interface DailyPoint {
+  date: string; // YYYY-MM-DD
+  clockedMinutes: number;
+  idleMinutes: number;
+  activeMinutes: number;
+  callsMade: number;
+}
+
+export interface IdleGap {
+  date: string;
+  startedAt: string;
+  endedAt: string;
+  minutes: number;
+}
+
+export interface AgentDetail {
+  daily: DailyPoint[];
+  idleGaps: IdleGap[];
+  totalClockedMinutes: number;
+  totalIdleMinutes: number;
+  totalActiveMinutes: number;
+}
+
+function dayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Serie diaria (horas fichadas/activas/inactivas y llamadas) + huecos de
+ * inactividad de un agente en [from, to]. Usado por el panel de detalle de
+ * /admin/stats (gráficas + tabla).
+ */
+export async function getAgentDetail(userId: string, from: Date, to: Date): Promise<AgentDetail> {
+  const now = new Date();
+
+  const [entries, calls, audits] = await Promise.all([
+    prisma.timeEntry.findMany({
+      where: { userId, clockIn: { lte: to }, OR: [{ clockOut: null }, { clockOut: { gte: from } }] },
+      orderBy: { clockIn: "asc" },
+      select: { clockIn: true, clockOut: true },
+    }),
+    prisma.callActivity.findMany({
+      where: { userId, createdAt: { gte: from, lte: to } },
+      select: { createdAt: true },
+    }),
+    prisma.auditLog.findMany({
+      where: { userId, createdAt: { gte: from, lte: to } },
+      select: { createdAt: true },
+    }),
+  ]);
+
+  const clockedByDay = new Map<string, number>(); // minutos
+  const idleByDay = new Map<string, number>();
+  const callsByDay = new Map<string, number>();
+
+  for (let d = new Date(from); d.getTime() <= to.getTime(); d.setDate(d.getDate() + 1)) {
+    const key = dayKey(d);
+    clockedByDay.set(key, 0);
+    idleByDay.set(key, 0);
+    callsByDay.set(key, 0);
+  }
+
+  for (const c of calls) {
+    const key = dayKey(c.createdAt);
+    callsByDay.set(key, (callsByDay.get(key) ?? 0) + 1);
+  }
+
+  const activityTimes = [...calls, ...audits].map((a) => a.createdAt.getTime()).sort((a, b) => a - b);
+
+  const idleGaps: IdleGap[] = [];
+  let totalClockedMs = 0;
+  let totalIdleMs = 0;
+
+  for (const entry of entries) {
+    const segStart = Math.max(entry.clockIn.getTime(), from.getTime());
+    const segEnd = Math.min((entry.clockOut ?? now).getTime(), to.getTime());
+    if (segEnd <= segStart) continue;
+    totalClockedMs += segEnd - segStart;
+
+    // Reparte los minutos fichados de este tramo entre los días que cruza.
+    let cursor = segStart;
+    while (cursor < segEnd) {
+      const cursorDate = new Date(cursor);
+      const dayEnd = new Date(cursorDate);
+      dayEnd.setHours(23, 59, 59, 999);
+      const chunkEnd = Math.min(dayEnd.getTime(), segEnd);
+      const key = dayKey(cursorDate);
+      clockedByDay.set(key, (clockedByDay.get(key) ?? 0) + (chunkEnd - cursor) / 60_000);
+      cursor = chunkEnd + 1;
+    }
+
+    // Huecos sin actividad dentro de este tramo fichado.
+    const within = activityTimes.filter((t) => t >= segStart && t <= segEnd);
+    const points = [segStart, ...within, segEnd];
+    for (let i = 1; i < points.length; i++) {
+      const gapMs = points[i] - points[i - 1];
+      const gapMin = gapMs / 60_000;
+      if (gapMin >= IDLE_THRESHOLD_MINUTES) {
+        const key = dayKey(new Date(points[i - 1]));
+        idleByDay.set(key, (idleByDay.get(key) ?? 0) + gapMin);
+        idleGaps.push({
+          date: key,
+          startedAt: new Date(points[i - 1]).toISOString(),
+          endedAt: new Date(points[i]).toISOString(),
+          minutes: Math.round(gapMin),
+        });
+        totalIdleMs += gapMs;
+      }
+    }
+  }
+
+  const daily: DailyPoint[] = [...clockedByDay.keys()].sort().map((date) => {
+    const clockedMinutes = Math.round((clockedByDay.get(date) ?? 0) * 10) / 10;
+    const idleMinutes = Math.round((idleByDay.get(date) ?? 0) * 10) / 10;
+    return {
+      date,
+      clockedMinutes,
+      idleMinutes,
+      activeMinutes: Math.max(0, Math.round((clockedMinutes - idleMinutes) * 10) / 10),
+      callsMade: callsByDay.get(date) ?? 0,
+    };
+  });
+
+  return {
+    daily,
+    idleGaps: idleGaps.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
+    totalClockedMinutes: Math.round(totalClockedMs / 60_000),
+    totalIdleMinutes: Math.round(totalIdleMs / 60_000),
+    totalActiveMinutes: Math.round((totalClockedMs - totalIdleMs) / 60_000),
+  };
+}

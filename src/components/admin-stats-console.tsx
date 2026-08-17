@@ -16,6 +16,7 @@ import {
 import { queuedFetch } from "@/lib/fetch-queue";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
 import type { AgentStats } from "@/lib/admin-stats";
+import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
 
 interface TimeEntryRow {
   id: string;
@@ -69,6 +70,7 @@ export function AdminStatsConsole({
   const [loading, setLoading] = useState(false);
   const [entries, setEntries] = useState<TimeEntryRow[]>(initialOpenEntries);
   const [entriesLoaded, setEntriesLoaded] = useState(false);
+  const [openAgent, setOpenAgent] = useState<{ id: string; name: string } | null>(null);
 
   async function loadRange(days: number) {
     setActiveDays(days);
@@ -162,7 +164,7 @@ export function AdminStatsConsole({
         {/* ── Tarjetas por agente ────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((a) => (
-            <AgentCard key={a.id} agent={a} />
+            <AgentCard key={a.id} agent={a} onOpen={() => setOpenAgent({ id: a.id, name: a.name })} />
           ))}
         </div>
 
@@ -196,14 +198,22 @@ export function AdminStatsConsole({
           )}
         </section>
       </div>
+
+      {openAgent && (
+        <AgentDetailDrawer userId={openAgent.id} name={openAgent.name} range={range} onClose={() => setOpenAgent(null)} />
+      )}
     </div>
   );
 }
 
-function AgentCard({ agent }: { agent: AgentStats }) {
+function AgentCard({ agent, onOpen }: { agent: AgentStats; onOpen: () => void }) {
   const statusEntries = Object.entries(agent.byStatus).filter(([, n]) => n > 0);
   return (
-    <div className="surface flex flex-col gap-4 p-5">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="surface flex flex-col gap-4 p-5 text-left transition hover:border-slate-700"
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-300">
@@ -256,7 +266,7 @@ function AgentCard({ agent }: { agent: AgentStats }) {
           ))}
         </div>
       )}
-    </div>
+    </button>
   );
 }
 

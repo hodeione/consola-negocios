@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 import { buildBusinessWhere } from "@/lib/businesses/filters";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
+import { fmtHMS } from "@/lib/format";
 import type { ScrapeTaskStatus } from "@/generated/prisma/enums";
 
 const TERMINAL_STATUSES: ScrapeTaskStatus[] = ["DONE", "ERROR", "CANCELLED"];
@@ -68,7 +69,7 @@ export default async function Home() {
       const overlapEnd = Math.min((e.clockOut ?? new Date()).getTime(), endOfToday.getTime());
       return acc + Math.max(0, overlapEnd - overlapStart);
     }, 0) / 3_600_000;
-  const hoursTodayLabel = hoursToday >= 0.05 ? `${hoursToday.toFixed(1)}h` : "0h";
+  const hoursTodayLabel = fmtHMS(hoursToday * 60);
 
   const byStatus = Object.fromEntries(byStatusRaw.map((s) => [s.status, s._count._all]));
   const firstName = user.name.split(" ")[0];
