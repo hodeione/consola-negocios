@@ -34,3 +34,22 @@ export const PRIORITY_BADGE: Record<string, string> = {
 
 export const STATUS_OPTIONS = Object.keys(STATUS_LABEL);
 export const PRIORITY_OPTIONS = Object.keys(PRIORITY_LABEL);
+
+// Catálogo real de productos vendidos desde la consola.
+export const PRODUCT_LABEL: Record<string, string> = {
+  LANDING: "Landing page",
+  SEO: "SEO",
+  ECOMMERCE: "E-commerce",
+  SAAS: "SaaS",
+  CUSTOM: "A medida",
+  OTHER: "Otro",
+};
+export const PRODUCT_OPTIONS = Object.keys(PRODUCT_LABEL);
+
+// Auditoría: etiqueta legible para cada tipo de evento de AuditLog.
+export const AUDIT_ACTION_LABEL: Record<string, string> = {
+  reassigned: "Reasignado",
+  priority_changed: "Prioridad cambiada",
+  status_changed: "Estado cambiado",
+  tags_changed: "Etiquetas cambiadas",
+};

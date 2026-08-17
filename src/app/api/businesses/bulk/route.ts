@@ -55,6 +55,13 @@ export async function POST(request: Request) {
   if (assignedToUserId !== undefined) fieldPatch.assignedToUserId = assignedToUserId;
 
   let updatedCount = 0;
+  const auditRows: { businessId: string; userId: string; action: string; detail: string }[] = [];
+  const targetLabel =
+    assignedToUserId === undefined
+      ? null
+      : assignedToUserId
+        ? ((await prisma.user.findUnique({ where: { id: assignedToUserId }, select: { name: true } }))?.name ?? assignedToUserId)
+        : "sin asignar";
 
   if (Object.keys(fieldPatch).length > 0) {
     const res = await prisma.business.updateMany({
@@ -62,6 +69,12 @@ export async function POST(request: Request) {
       data: fieldPatch,
     });
     updatedCount = res.count;
+
+    for (const b of visibleIds) {
+      if (priority) auditRows.push({ businessId: b.id, userId: user.id, action: "priority_changed", detail: `acción en lote → ${priority}` });
+      if (status) auditRows.push({ businessId: b.id, userId: user.id, action: "status_changed", detail: `acción en lote → ${status}` });
+      if (targetLabel !== null) auditRows.push({ businessId: b.id, userId: user.id, action: "reassigned", detail: `acción en lote → ${targetLabel}` });
+    }
   }
 
   if (addTag) {
@@ -76,6 +89,13 @@ export async function POST(request: Request) {
         )
     );
     updatedCount = Math.max(updatedCount, visibleIds.length);
+    for (const b of visibleIds) {
+      auditRows.push({ businessId: b.id, userId: user.id, action: "tags_changed", detail: `+ ${addTag} (lote)` });
+    }
+  }
+
+  if (auditRows.length > 0) {
+    await prisma.auditLog.createMany({ data: auditRows });
   }
 
   return NextResponse.json({ updated: updatedCount });

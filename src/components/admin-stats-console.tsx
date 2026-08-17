@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
+  Banknote,
   BarChart3,
   CalendarClock,
   Check,
@@ -146,9 +147,17 @@ export function AdminStatsConsole({
           </div>
         </div>
 
-        <p className="text-xs text-slate-500">
-          Rango: {new Date(range.from).toLocaleDateString("es-ES")} — {new Date(range.to).toLocaleDateString("es-ES")}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <span>
+            Rango: {new Date(range.from).toLocaleDateString("es-ES")} — {new Date(range.to).toLocaleDateString("es-ES")}
+          </span>
+          {agents.reduce((acc, a) => acc + a.revenueInRange, 0) > 0 && (
+            <span className="flex items-center gap-1.5 font-semibold text-emerald-400">
+              <Banknote className="h-3.5 w-3.5" strokeWidth={2.25} />
+              {agents.reduce((acc, a) => acc + a.revenueInRange, 0).toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })} en ventas del equipo
+            </span>
+          )}
+        </div>
 
         {/* ── Tarjetas por agente ────────────────────────── */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -222,6 +231,18 @@ function AgentCard({ agent }: { agent: AgentStats }) {
         <span>{agent.totalBusinesses} negocio(s) asignados</span>
         {agent.dueToday > 0 && <span className="font-medium text-amber-400">{agent.dueToday} toca llamar hoy</span>}
       </div>
+
+      {agent.revenueInRange > 0 && (
+        <div className="flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs">
+          <span className="flex items-center gap-1.5 font-semibold text-emerald-300">
+            <Banknote className="h-3.5 w-3.5" strokeWidth={2.25} />
+            {agent.revenueInRange.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+          </span>
+          <span className="text-emerald-400/80">
+            {agent.dealsInRange} venta{agent.dealsInRange !== 1 ? "s" : ""} cerrada{agent.dealsInRange !== 1 ? "s" : ""}
+          </span>
+        </div>
+      )}
 
       {statusEntries.length > 0 && (
         <div className="flex flex-wrap gap-1.5 border-t border-slate-800/70 pt-3">

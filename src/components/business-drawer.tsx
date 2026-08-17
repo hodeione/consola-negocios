@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 import {
+  Banknote,
+  CheckCheck,
+  History,
   Loader2,
   MapPin,
   PhoneCall,
   Save,
+  ShieldAlert,
   Star,
   Tag,
   UserCircle,
@@ -13,8 +17,11 @@ import {
 } from "lucide-react";
 import { queuedFetch } from "@/lib/fetch-queue";
 import {
+  AUDIT_ACTION_LABEL,
   PRIORITY_LABEL,
   PRIORITY_OPTIONS,
+  PRODUCT_LABEL,
+  PRODUCT_OPTIONS,
   STATUS_BADGE,
   STATUS_LABEL,
   STATUS_OPTIONS,
@@ -28,12 +35,25 @@ interface CallActivityRow {
   createdAt: string;
   user: { id: string; name: string };
 }
-type BusinessDetail = BusinessRow & { callActivities: CallActivityRow[] };
+interface AuditLogRow {
+  id: string;
+  action: string;
+  detail: string;
+  createdAt: string;
+  user: { id: string; name: string };
+}
+type BusinessDetail = BusinessRow & { callActivities: CallActivityRow[]; auditLogs: AuditLogRow[] };
 type SimpleUser = { id: string; name: string };
+
+const STALE_DAYS = 90;
 
 function toDateInputValue(iso: string | null): string {
   if (!iso) return "";
   return iso.slice(0, 10);
+}
+
+function daysSince(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
 export function BusinessDrawer({
@@ -63,6 +83,9 @@ export function BusinessDrawer({
   const [tagInput, setTagInput] = useState("");
   const [nextFollowUpAt, setNextFollowUpAt] = useState("");
   const [assignedToUserId, setAssignedToUserId] = useState("");
+  const [dealValue, setDealValue] = useState("0");
+  const [product, setProduct] = useState("");
+  const [closedAt, setClosedAt] = useState("");
 
   // Formulario de registrar llamada
   const [callOutcome, setCallOutcome] = useState("NO_ANSWER");
@@ -86,6 +109,9 @@ export function BusinessDrawer({
         setTags(data.tags);
         setNextFollowUpAt(toDateInputValue(data.nextFollowUpAt as unknown as string | null));
         setAssignedToUserId(data.assignedTo?.id ?? "");
+        setDealValue(String(data.dealValue ?? 0));
+        setProduct(data.product ?? "");
+        setClosedAt(toDateInputValue(data.closedAt as unknown as string | null));
       })
       .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)))
       .finally(() => !cancelled && setLoading(false));
@@ -108,6 +134,9 @@ export function BusinessDrawer({
           contactRole,
           tags,
           nextFollowUpAt: nextFollowUpAt ? new Date(nextFollowUpAt).toISOString() : null,
+          dealValue: parseFloat(dealValue.replace(",", ".")) || 0,
+          product: product || null,
+          closedAt: closedAt ? new Date(closedAt).toISOString() : null,
           ...(isAdmin && { assignedToUserId: assignedToUserId || null }),
         }),
       });
@@ -225,6 +254,18 @@ export function BusinessDrawer({
                     "—"
                   )}
                 </dd>
+                <dt className="text-slate-500">Verificado</dt>
+                <dd className="flex items-center gap-1.5 text-slate-300">
+                  {business.lastVerifiedAt
+                    ? new Date(business.lastVerifiedAt).toLocaleDateString("es-ES")
+                    : "—"}
+                  {business.lastVerifiedAt && daysSince(business.lastVerifiedAt as unknown as string) > STALE_DAYS && (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/20">
+                      <ShieldAlert className="h-2.5 w-2.5" strokeWidth={2.5} />
+                      hace {daysSince(business.lastVerifiedAt as unknown as string)} días
+                    </span>
+                  )}
+                </dd>
               </dl>
             </section>
 
@@ -334,6 +375,47 @@ export function BusinessDrawer({
                 </div>
               </Field>
 
+              <div className="mt-4 border-t border-slate-800/70 pt-4">
+                <div className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                  <Banknote className="h-3.5 w-3.5 text-slate-500" strokeWidth={2.25} />
+                  Venta
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Producto">
+                    <select
+                      value={product}
+                      onChange={(e) => setProduct(e.target.value)}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+                    >
+                      <option value="">—</option>
+                      {PRODUCT_OPTIONS.map((p) => (
+                        <option key={p} value={p}>
+                          {PRODUCT_LABEL[p]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Importe (€)">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={dealValue}
+                      onChange={(e) => setDealValue(e.target.value)}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+                    />
+                  </Field>
+                  <Field label="Fecha de cierre">
+                    <input
+                      type="date"
+                      value={closedAt}
+                      onChange={(e) => setClosedAt(e.target.value)}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+                    />
+                  </Field>
+                </div>
+              </div>
+
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -394,26 +476,45 @@ export function BusinessDrawer({
               </form>
             </section>
 
-            {/* Historial */}
+            {/* Historial: llamadas + cambios de gestión, mezclados por fecha */}
             <section>
-              <SectionTitle>Historial de llamadas</SectionTitle>
-              {business.callActivities.length === 0 ? (
-                <p className="text-xs text-slate-600">Todavía no hay llamadas registradas.</p>
+              <div className="mb-3 flex items-center gap-1.5">
+                <History className="h-3.5 w-3.5 text-slate-500" strokeWidth={2.25} />
+                <SectionTitle className="!mb-0">Historial</SectionTitle>
+              </div>
+              {business.callActivities.length === 0 && business.auditLogs.length === 0 ? (
+                <p className="text-xs text-slate-600">Todavía no hay actividad registrada.</p>
               ) : (
                 <ul className="flex flex-col gap-2">
-                  {business.callActivities.map((a) => (
-                    <li key={a.id} className="surface p-3 text-xs">
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE[a.outcome]}`}>
-                          {STATUS_LABEL[a.outcome]}
-                        </span>
-                        <span className="text-slate-500">
-                          {a.user.name} · {new Date(a.createdAt).toLocaleString("es-ES")}
-                        </span>
-                      </div>
-                      {a.notes && <p className="text-slate-300">{a.notes}</p>}
-                    </li>
-                  ))}
+                  {[
+                    ...business.callActivities.map((a) => ({ type: "call" as const, at: a.createdAt, data: a })),
+                    ...business.auditLogs.map((a) => ({ type: "audit" as const, at: a.createdAt, data: a })),
+                  ]
+                    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+                    .map((entry) =>
+                      entry.type === "call" ? (
+                        <li key={`call-${entry.data.id}`} className="surface p-3 text-xs">
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGE[entry.data.outcome]}`}>
+                              {STATUS_LABEL[entry.data.outcome]}
+                            </span>
+                            <span className="text-slate-500">
+                              {entry.data.user.name} · {new Date(entry.data.createdAt).toLocaleString("es-ES")}
+                            </span>
+                          </div>
+                          {entry.data.notes && <p className="text-slate-300">{entry.data.notes}</p>}
+                        </li>
+                      ) : (
+                        <li key={`audit-${entry.data.id}`} className="flex items-center gap-2 px-1 py-1 text-xs text-slate-500">
+                          <CheckCheck className="h-3 w-3 flex-shrink-0 text-slate-600" strokeWidth={2.25} />
+                          <span className="text-slate-400">{AUDIT_ACTION_LABEL[entry.data.action] ?? entry.data.action}</span>
+                          <span>· {entry.data.detail}</span>
+                          <span className="ml-auto flex-shrink-0">
+                            {entry.data.user.name} · {new Date(entry.data.createdAt).toLocaleString("es-ES")}
+                          </span>
+                        </li>
+                      )
+                    )}
                 </ul>
               )}
             </section>
@@ -424,8 +525,8 @@ export function BusinessDrawer({
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</div>;
+function SectionTitle({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 ${className}`}>{children}</div>;
 }
 
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {

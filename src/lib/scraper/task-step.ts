@@ -89,14 +89,17 @@ async function saveBusinessIfHasContact(
       ownerId: task.ownerId,
       assignedToUserId: task.ownerId,
       sourceTaskId: task.id,
+      lastVerifiedAt: new Date(),
     },
     // No tocamos los campos de gestión (status, prioridad, notas, etiquetas...)
-    // si el negocio ya existía de una búsqueda anterior.
+    // si el negocio ya existía de una búsqueda anterior — pero sí que se
+    // acaba de re-scrapear, así que sube su "frescura".
     update: {
       ...fields,
       emails,
       webPhones,
       sourceTaskId: task.id,
+      lastVerifiedAt: new Date(),
     },
   });
   return true;

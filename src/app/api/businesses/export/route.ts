@@ -14,9 +14,20 @@ const STATUS_LABEL: Record<string, string> = {
   INVALID_NUMBER: "Número inválido",
 };
 const PRIORITY_LABEL: Record<string, string> = { LOW: "Baja", MEDIUM: "Media", HIGH: "Alta" };
+const PRODUCT_LABEL: Record<string, string> = {
+  LANDING: "Landing page",
+  SEO: "SEO",
+  ECOMMERCE: "E-commerce",
+  SAAS: "SaaS",
+  CUSTOM: "A medida",
+  OTHER: "Otro",
+};
 
 const EXPORT_LIMIT = 5000;
 
+// Nota: las columnas de venta van al final a propósito — /api/businesses/import
+// lee por índice de columna fijo, así que añadir aquí en medio rompería la
+// compatibilidad con ficheros ya generados (p.ej. los del scraper local).
 const HEADERS = [
   "Nombre",
   "Zona",
@@ -36,8 +47,11 @@ const HEADERS = [
   "Próxima llamada",
   "Último contacto",
   "Asignado a",
+  "Producto",
+  "Importe",
+  "Fecha de cierre",
 ];
-const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18];
+const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16];
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();
@@ -91,6 +105,9 @@ export async function GET(request: NextRequest) {
       b.nextFollowUpAt ? b.nextFollowUpAt.toISOString().slice(0, 10) : "",
       b.lastCalledAt ? b.lastCalledAt.toISOString().slice(0, 10) : "",
       b.assignedTo?.name ?? "",
+      b.product ? (PRODUCT_LABEL[b.product] ?? b.product) : "",
+      b.dealValue || "",
+      b.closedAt ? b.closedAt.toISOString().slice(0, 10) : "",
     ]);
     const fill: ExcelJS.Fill = {
       type: "pattern",

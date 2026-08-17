@@ -17,8 +17,19 @@ const STATUS_BY_LABEL: Record<string, string> = {
   "número inválido": "INVALID_NUMBER",
 };
 const PRIORITY_BY_LABEL: Record<string, string> = { baja: "LOW", media: "MEDIUM", alta: "HIGH" };
+const PRODUCT_BY_LABEL: Record<string, string> = {
+  "landing page": "LANDING",
+  seo: "SEO",
+  "e-commerce": "ECOMMERCE",
+  saas: "SAAS",
+  "a medida": "CUSTOM",
+  otro: "OTHER",
+};
 
 // Mismo orden de columnas que "Exportar Excel" (ver src/app/api/businesses/export/route.ts).
+// Producto/Importe/Fecha de cierre van al final — opcionales, para que los
+// ficheros generados antes de añadir el pipeline de ventas se sigan
+// importando sin problema (esas columnas simplemente no existen en ellos).
 const COL = {
   name: 1,
   zone: 2,
@@ -35,6 +46,9 @@ const COL = {
   contactName: 13,
   contactRole: 14,
   tags: 15,
+  product: 19,
+  dealValue: 20,
+  closedAt: 21,
 };
 
 function cellText(cell: ExcelJS.Cell): string {
@@ -114,6 +128,11 @@ export async function POST(request: Request) {
     const statusLabel = cellText(row.getCell(COL.status)).toLowerCase();
     const priorityLabel = cellText(row.getCell(COL.priority)).toLowerCase();
     const tags = splitList(cellText(row.getCell(COL.tags)));
+    const productLabel = cellText(row.getCell(COL.product)).toLowerCase();
+    const dealValueRaw = cellText(row.getCell(COL.dealValue)).replace(",", ".");
+    const dealValue = parseFloat(dealValueRaw) || 0;
+    const closedAtRaw = cellText(row.getCell(COL.closedAt));
+    const closedAt = closedAtRaw && !isNaN(Date.parse(closedAtRaw)) ? new Date(closedAtRaw) : undefined;
 
     const dedupeKey = buildDedupeKey({ website, phone: mapsPhone, name });
     const fields = {
@@ -142,11 +161,16 @@ export async function POST(request: Request) {
           contactName: cellText(row.getCell(COL.contactName)),
           contactRole: cellText(row.getCell(COL.contactRole)),
           tags,
+          lastVerifiedAt: new Date(),
+          product: (PRODUCT_BY_LABEL[productLabel] as never) ?? undefined,
+          dealValue,
+          ...(closedAt && { closedAt }),
         },
         // No pisamos el estado/prioridad/etiquetas si el negocio ya existía
         // y alguien ya lo estaba gestionando — solo actualizamos los datos
-        // "de scraping".
-        update: fields,
+        // "de scraping". Sí actualizamos lastVerifiedAt: reimportar ES
+        // volver a verificar estos datos.
+        update: { ...fields, lastVerifiedAt: new Date() },
       });
       imported++;
     } catch (err) {

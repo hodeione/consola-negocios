@@ -22,6 +22,8 @@ export interface BusinessFilters {
   search?: string;
   dueBefore?: Date;
   batchJobId?: string;
+  // Solo negocios cuyo lastVerifiedAt sea anterior a esta fecha — "datos desactualizados".
+  staleBefore?: Date;
 }
 
 function parseCsv<T extends string>(value: string | null, allowed: readonly T[]): T[] | undefined {
@@ -33,6 +35,8 @@ function parseCsv<T extends string>(value: string | null, allowed: readonly T[])
 export function parseBusinessFilters(searchParams: URLSearchParams): BusinessFilters {
   const dueBeforeRaw = searchParams.get("dueBefore");
   const dueBefore = dueBeforeRaw ? new Date(dueBeforeRaw) : undefined;
+  const staleBeforeRaw = searchParams.get("staleBefore");
+  const staleBefore = staleBeforeRaw ? new Date(staleBeforeRaw) : undefined;
 
   return {
     status: parseCsv(searchParams.get("status"), CALL_STATUSES),
@@ -44,6 +48,7 @@ export function parseBusinessFilters(searchParams: URLSearchParams): BusinessFil
     search: searchParams.get("search")?.trim() || undefined,
     dueBefore: dueBefore && !isNaN(dueBefore.getTime()) ? dueBefore : undefined,
     batchJobId: searchParams.get("batchJobId")?.trim() || undefined,
+    staleBefore: staleBefore && !isNaN(staleBefore.getTime()) ? staleBefore : undefined,
   };
 }
 
@@ -75,6 +80,7 @@ export function buildBusinessWhere(
   if (filters.tag) where.tags = { has: filters.tag };
   if (filters.batchJobId) where.sourceTask = { batchJobId: filters.batchJobId };
   if (filters.dueBefore) where.nextFollowUpAt = { lte: filters.dueBefore };
+  if (filters.staleBefore) where.lastVerifiedAt = { lte: filters.staleBefore };
 
   if (filters.search) {
     where.OR = [

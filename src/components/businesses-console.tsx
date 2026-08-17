@@ -12,6 +12,7 @@ import {
   Mail,
   Phone,
   Search,
+  ShieldAlert,
   X,
 } from "lucide-react";
 import type { Business } from "@/generated/prisma/client";
@@ -38,6 +39,7 @@ interface Filters {
   tag: string;
   assignedTo: string; // "" | "me" | "unassigned" | userId
   dueOnly: boolean;
+  staleOnly: boolean;
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -48,7 +50,10 @@ const EMPTY_FILTERS: Filters = {
   tag: "",
   assignedTo: "",
   dueOnly: false,
+  staleOnly: false,
 };
+
+const STALE_DAYS = 90;
 
 function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: string, sortDir: string) {
   const sp = new URLSearchParams();
@@ -59,6 +64,11 @@ function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: st
   if (filters.tag) sp.set("tag", filters.tag);
   if (filters.assignedTo) sp.set("assignedTo", filters.assignedTo);
   if (filters.dueOnly) sp.set("dueBefore", new Date().toISOString());
+  if (filters.staleOnly) {
+    const d = new Date();
+    d.setDate(d.getDate() - STALE_DAYS);
+    sp.set("staleBefore", d.toISOString());
+  }
   sp.set("page", String(page));
   sp.set("pageSize", String(pageSize));
   sp.set("sortBy", sortBy);
@@ -219,6 +229,7 @@ export function BusinessesConsole({
     filters.tag ||
     filters.assignedTo ||
     filters.dueOnly ||
+    filters.staleOnly ||
     searchInput;
 
   return (
@@ -243,6 +254,21 @@ export function BusinessesConsole({
           >
             <CalendarClock className="h-3.5 w-3.5" strokeWidth={2.25} />
             Toca llamar hoy
+          </button>
+          <button
+            onClick={() => {
+              setPage(1);
+              setFilters((f) => ({ ...f, staleOnly: !f.staleOnly }));
+            }}
+            title={`Negocios sin verificar en más de ${STALE_DAYS} días`}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              filters.staleOnly
+                ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30"
+                : "border border-slate-800 text-slate-300 hover:border-slate-700"
+            }`}
+          >
+            <ShieldAlert className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Desactualizados
           </button>
           <button
             onClick={exportCurrentView}

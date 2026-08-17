@@ -21,10 +21,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Origen y destino no pueden ser el mismo" }, { status: 400 });
   }
 
+  const [fromUser, toUser, affected] = await Promise.all([
+    prisma.user.findUnique({ where: { id: fromUserId }, select: { name: true } }),
+    toUserId ? prisma.user.findUnique({ where: { id: toUserId }, select: { name: true } }) : null,
+    prisma.business.findMany({ where: { assignedToUserId: fromUserId }, select: { id: true } }),
+  ]);
+
   const result = await prisma.business.updateMany({
     where: { assignedToUserId: fromUserId },
     data: { assignedToUserId: toUserId },
   });
+
+  if (affected.length > 0) {
+    const detail = `reasignación masiva: de ${fromUser?.name ?? fromUserId} a ${toUser?.name ?? "sin asignar"}`;
+    await prisma.auditLog.createMany({
+      data: affected.map((b) => ({ businessId: b.id, userId: admin.id, action: "reassigned", detail })),
+    });
+  }
 
   return NextResponse.json({ reassigned: result.count });
 }

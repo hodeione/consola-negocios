@@ -31,8 +31,9 @@ const HEADERS = [
   "Nombre", "Zona", "Keyword", "Dirección", "Tel. Maps", "Web", "Emails",
   "Tel. Web", "Rating", "Categoría", "Estado", "Prioridad", "Contacto",
   "Cargo", "Etiquetas", "Próxima llamada", "Último contacto", "Asignado a",
+  "Producto", "Importe", "Fecha de cierre",
 ];
-const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18];
+const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16];
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -108,7 +109,7 @@ async function writeXlsx(rows: Row[], filename: string) {
     const row = ws.addRow([
       r.name, r.zone, r.keyword, r.address, r.mapsPhone, r.website,
       r.emails.join("; "), r.webPhones.join("; "), r.rating || "", r.category,
-      "", "", "", "", "", "", "", "", // Estado/Prioridad/Contacto/... — se rellenan al importar
+      "", "", "", "", "", "", "", "", "", "", "", // Estado/Prioridad/Contacto/.../Venta — se rellenan al importar o al gestionar
     ]);
     const fill: ExcelJS.Fill = {
       type: "pattern", pattern: "solid",

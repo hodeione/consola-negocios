@@ -13,6 +13,8 @@ export interface AgentStats {
   totalBusinesses: number;
   byStatus: Record<string, number>;
   dueToday: number;
+  revenueInRange: number;
+  dealsInRange: number;
 }
 
 /**
@@ -32,7 +34,7 @@ export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]>
   });
   const userIds = users.map((u) => u.id);
 
-  const [callsRaw, businessesByStatusRaw, dueTodayRaw, entriesOverlapping] = await Promise.all([
+  const [callsRaw, businessesByStatusRaw, dueTodayRaw, entriesOverlapping, revenueRaw] = await Promise.all([
     prisma.callActivity.groupBy({
       by: ["userId"],
       where: { userId: { in: userIds }, createdAt: { gte: from, lte: to } },
@@ -58,10 +60,19 @@ export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]>
       },
       select: { userId: true, clockIn: true, clockOut: true },
     }),
+    // Ventas cerradas en el rango (closedAt dentro de [from, to]).
+    prisma.business.groupBy({
+      by: ["assignedToUserId"],
+      where: { assignedToUserId: { in: userIds }, closedAt: { gte: from, lte: to } },
+      _sum: { dealValue: true },
+      _count: { _all: true },
+    }),
   ]);
 
   const callsByUser = new Map(callsRaw.map((r) => [r.userId, r._count._all]));
   const dueTodayByUser = new Map(dueTodayRaw.map((r) => [r.assignedToUserId ?? "", r._count._all]));
+  const revenueByUser = new Map(revenueRaw.map((r) => [r.assignedToUserId ?? "", r._sum.dealValue ?? 0]));
+  const dealsByUser = new Map(revenueRaw.map((r) => [r.assignedToUserId ?? "", r._count._all]));
 
   const statusByUser = new Map<string, Record<string, number>>();
   for (const row of businessesByStatusRaw) {
@@ -96,6 +107,8 @@ export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]>
       totalBusinesses,
       byStatus,
       dueToday: dueTodayByUser.get(u.id) ?? 0,
+      revenueInRange: revenueByUser.get(u.id) ?? 0,
+      dealsInRange: dealsByUser.get(u.id) ?? 0,
     };
   });
 }

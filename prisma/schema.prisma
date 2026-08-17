@@ -36,6 +36,7 @@ model User {
   assignedBusiness  Business[]    @relation("BusinessAssignee")
   callActivities    CallActivity[]
   timeEntries       TimeEntry[]
+  auditLogs         AuditLog[]
 
   @@map("users")
 }
@@ -143,6 +144,16 @@ enum Priority {
   HIGH
 }
 
+// Catálogo real de productos que se venden desde la consola.
+enum ProductType {
+  LANDING
+  SEO
+  ECOMMERCE
+  SAAS
+  CUSTOM
+  OTHER
+}
+
 model Business {
   id               String     @id @default(cuid())
   ownerId          String
@@ -173,6 +184,17 @@ model Business {
   nextFollowUpAt DateTime?
   lastCalledAt   DateTime?
 
+  // Venta: solo tiene sentido relleno cuando status = CUSTOMER, pero se deja
+  // libre por si se quiere anotar una venta parcial/estimada antes de cerrar.
+  dealValue Float        @default(0)
+  product   ProductType?
+  closedAt  DateTime?
+
+  // Frescura: cuándo se comprobaron por última vez estos datos (al scrapear,
+  // reimportar o re-verificar la ficha). Sirve para detectar negocios con
+  // teléfono/web potencialmente caducados.
+  lastVerifiedAt DateTime @default(now())
+
   // Deduplicación: web normalizada, o "tel|nombre" si no hay web. Única por owner.
   dedupeKey String
 
@@ -180,6 +202,7 @@ model Business {
   updatedAt DateTime @updatedAt
 
   callActivities CallActivity[]
+  auditLogs      AuditLog[]
 
   @@unique([ownerId, dedupeKey])
   @@index([ownerId, status])
@@ -201,4 +224,24 @@ model CallActivity {
 
   @@index([businessId])
   @@map("call_activities")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auditoría: quién cambió qué en la gestión de un negocio (reasignaciones,
+// cambios de prioridad/estado/etiquetas). Independiente del historial de
+// llamadas (CallActivity), que solo cubre resultados de llamada.
+// ─────────────────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "reassigned" | "priority_changed" | "status_changed" | "tags_changed"
+  action  String
+  detail  String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@map("audit_logs")
 }
