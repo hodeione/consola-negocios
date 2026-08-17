@@ -23,14 +23,30 @@ interface TimeEntryRow {
   userId: string;
   clockIn: string;
   clockOut: string | null;
+  type: "WORK" | "VACATION" | "ABSENCE";
+  note: string;
   editedByAdmin: boolean;
   user: { id: string; name: string; email: string };
 }
+
+const ENTRY_TYPE_LABEL: Record<string, string> = { WORK: "Trabajo", VACATION: "Vacaciones", ABSENCE: "Ausencia" };
+const ENTRY_TYPE_BADGE: Record<string, string> = {
+  VACATION: "bg-blue-500/10 text-blue-300 border border-blue-500/20",
+  ABSENCE: "bg-purple-500/10 text-purple-300 border border-purple-500/20",
+};
 
 const RANGE_PRESETS = [
   { label: "Hoy", days: 1 },
   { label: "7 días", days: 7 },
   { label: "30 días", days: 30 },
+];
+
+type SortKey = "revenueInRange" | "callsInRange" | "hoursInRange" | "callsPerHour";
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "revenueInRange", label: "Ventas" },
+  { key: "callsInRange", label: "Llamadas" },
+  { key: "hoursInRange", label: "Horas" },
+  { key: "callsPerHour", label: "Llam./hora" },
 ];
 
 function fmtHours(h: number): string {
@@ -71,6 +87,8 @@ export function AdminStatsConsole({
   const [entries, setEntries] = useState<TimeEntryRow[]>(initialOpenEntries);
   const [entriesLoaded, setEntriesLoaded] = useState(false);
   const [openAgent, setOpenAgent] = useState<{ id: string; name: string } | null>(null);
+  const [showAbsenceForm, setShowAbsenceForm] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>("revenueInRange");
 
   async function loadRange(days: number) {
     setActiveDays(days);
@@ -150,9 +168,25 @@ export function AdminStatsConsole({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-          <span>
-            Rango: {new Date(range.from).toLocaleDateString("es-ES")} — {new Date(range.to).toLocaleDateString("es-ES")}
-          </span>
+          <div className="flex items-center gap-3">
+            <span>
+              Rango: {new Date(range.from).toLocaleDateString("es-ES")} — {new Date(range.to).toLocaleDateString("es-ES")}
+            </span>
+            <label className="flex items-center gap-1.5">
+              Ordenar por
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortKey)}
+                className="rounded-md border border-slate-800 bg-slate-900/70 px-1.5 py-0.5 text-xs text-slate-300 outline-none focus:border-blue-500"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           {agents.reduce((acc, a) => acc + a.revenueInRange, 0) > 0 && (
             <span className="flex items-center gap-1.5 font-semibold text-emerald-400">
               <Banknote className="h-3.5 w-3.5" strokeWidth={2.25} />
@@ -161,11 +195,18 @@ export function AdminStatsConsole({
           )}
         </div>
 
-        {/* ── Tarjetas por agente ────────────────────────── */}
+        {/* ── Tarjetas por agente, ordenadas por el criterio elegido ── */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {agents.map((a) => (
-            <AgentCard key={a.id} agent={a} onOpen={() => setOpenAgent({ id: a.id, name: a.name })} />
-          ))}
+          {[...agents]
+            .sort((a, b) => (b[sortBy] ?? 0) - (a[sortBy] ?? 0))
+            .map((a, i) => (
+              <AgentCard
+                key={a.id}
+                agent={a}
+                rank={(a[sortBy] ?? 0) > 0 ? i + 1 : null}
+                onOpen={() => setOpenAgent({ id: a.id, name: a.name })}
+              />
+            ))}
         </div>
 
         {/* ── Fichajes ───────────────────────────────────── */}
@@ -181,10 +222,25 @@ export function AdminStatsConsole({
                 </span>
               )}
             </div>
+            <button
+              onClick={() => setShowAbsenceForm((v) => !v)}
+              className="text-xs font-medium text-blue-400 hover:text-blue-300"
+            >
+              {showAbsenceForm ? "Cancelar" : "+ Vacaciones/ausencia"}
+            </button>
           </div>
           <p className="mb-4 text-xs text-slate-500">
             Últimos 100. Corrige un fichaje olvidado o mal cerrado con «Editar».
           </p>
+          {showAbsenceForm && (
+            <AbsenceForm
+              agents={agents}
+              onCreated={(entry) => {
+                setEntries((prev) => [entry, ...prev]);
+                setShowAbsenceForm(false);
+              }}
+            />
+          )}
           {!entriesLoaded && entries.length === 0 ? (
             <p className="py-6 text-center text-xs text-slate-600">Cargando…</p>
           ) : entries.length === 0 ? (
@@ -206,7 +262,114 @@ export function AdminStatsConsole({
   );
 }
 
-function AgentCard({ agent, onOpen }: { agent: AgentStats; onOpen: () => void }) {
+function AbsenceForm({
+  agents,
+  onCreated,
+}: {
+  agents: AgentStats[];
+  onCreated: (entry: TimeEntryRow) => void;
+}) {
+  const [userId, setUserId] = useState(agents[0]?.id ?? "");
+  const [type, setType] = useState<"VACATION" | "ABSENCE">("VACATION");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!userId || !from || !to) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await queuedFetch("/api/admin/time-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          type,
+          clockIn: new Date(from).toISOString(),
+          clockOut: new Date(to).toISOString(),
+          note,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
+      onCreated(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-slate-500">Persona</label>
+        <select
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
+        >
+          {agents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-slate-500">Tipo</label>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as "VACATION" | "ABSENCE")}
+          className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
+        >
+          <option value="VACATION">Vacaciones</option>
+          <option value="ABSENCE">Ausencia</option>
+        </select>
+      </div>
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-slate-500">Desde</label>
+        <input
+          type="datetime-local"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          required
+          className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-slate-500">Hasta</label>
+        <input
+          type="datetime-local"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          required
+          className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
+        />
+      </div>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Nota (opcional)"
+        className="min-w-32 flex-1 rounded-md border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
+      />
+      <button
+        type="submit"
+        disabled={busy}
+        className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
+      >
+        {busy ? "Guardando…" : "Registrar"}
+      </button>
+      {error && <span className="w-full text-[11px] text-red-400">{error}</span>}
+    </form>
+  );
+}
+
+function AgentCard({ agent, rank, onOpen }: { agent: AgentStats; rank: number | null; onOpen: () => void }) {
   const statusEntries = Object.entries(agent.byStatus).filter(([, n]) => n > 0);
   return (
     <button
@@ -216,11 +379,19 @@ function AgentCard({ agent, onOpen }: { agent: AgentStats; onOpen: () => void })
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-300">
+          <span className="relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-300">
             {agent.name.slice(0, 1).toUpperCase()}
+            {rank === 1 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px]" title="1º en este criterio">
+                🏆
+              </span>
+            )}
           </span>
           <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-slate-100">{agent.name}</div>
+            <div className="flex items-center gap-1.5 truncate text-sm font-medium text-slate-100">
+              {rank && rank <= 3 && <span className="text-[10px] font-mono text-slate-500">#{rank}</span>}
+              {agent.name}
+            </div>
             <div className="truncate text-[11px] text-slate-500">{agent.email}</div>
           </div>
         </div>
@@ -403,10 +574,15 @@ function EntryRow({
             abierto
           </span>
         )}
+        {entry.type !== "WORK" && (
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${ENTRY_TYPE_BADGE[entry.type]}`}>
+            {ENTRY_TYPE_LABEL[entry.type]}
+          </span>
+        )}
         <span className="font-mono text-[11px] text-slate-600 tabular-nums">
           {durationH === null ? "en curso" : fmtHours(durationH)}
         </span>
-        {entry.editedByAdmin && <span className="text-[10px] text-slate-600">editado</span>}
+        {entry.editedByAdmin && entry.type === "WORK" && <span className="text-[10px] text-slate-600">editado</span>}
       </div>
       <div className="flex flex-shrink-0 items-center gap-3">
         {!entry.clockOut && (

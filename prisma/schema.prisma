@@ -65,12 +65,24 @@ model PasswordResetToken {
 // hasta que se cierra. Solo puede haber un fichaje abierto por usuario
 // a la vez (se comprueba en la API, no aquí).
 // ─────────────────────────────────────────────────────────────
+enum TimeEntryType {
+  WORK
+  VACATION
+  ABSENCE
+}
+
 model TimeEntry {
   id        String    @id @default(cuid())
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   clockIn   DateTime  @default(now())
   clockOut  DateTime?
+  // WORK = fichaje normal (entra en horas trabajadas / detección de
+  // inactividad). VACATION/ABSENCE las crea el admin a mano, con rango ya
+  // cerrado — no cuentan como tiempo trabajado ni disparan avisos de "posible
+  // inactividad", porque no lo son.
+  type      TimeEntryType @default(WORK)
+  note      String    @default("")
   // Si el admin corrige un fichaje a mano (olvidado, mal cerrado...) queda anotado.
   editedByAdmin Boolean @default(false)
   createdAt DateTime  @default(now())

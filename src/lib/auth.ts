@@ -25,8 +25,15 @@ declare module "@auth/core/jwt" {
   }
 }
 
+// Por defecto next-auth mantiene la sesión 30 días desde el último uso — para
+// una consola con datos de clientes conviene algo más corto: se cierra sola
+// tras 8h sin actividad (una jornada), renovando el token cada hora mientras
+// se sigue usando (para no tener que reescribir la cookie en cada petición).
+const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
+const SESSION_UPDATE_AGE_SECONDS = 60 * 60;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS, updateAge: SESSION_UPDATE_AGE_SECONDS },
   pages: { signIn: "/login" },
   // Necesario al autohospedar (Railway/VPS/`next start` local): Auth.js sólo
   // confía automáticamente en el host en plataformas que detecta (Vercel,

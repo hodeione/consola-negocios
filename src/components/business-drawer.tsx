@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   Star,
   Tag,
+  TriangleAlert,
   UserCircle,
   X,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import {
   STATUS_OPTIONS,
   TAG_SUGGESTIONS,
 } from "@/lib/businesses/labels";
+import { isValidSpanishPhone } from "@/lib/businesses/phone";
 import type { BusinessRow } from "@/components/businesses-console";
 
 interface CallActivityRow {
@@ -321,9 +323,29 @@ export function BusinessDrawer({
                   {business.zone} · {business.keyword || business.category || "—"}
                 </dd>
                 <dt className="text-slate-500">Tel. Maps</dt>
-                <dd className="text-slate-300">{business.mapsPhone || "—"}</dd>
+                <dd className="flex items-center gap-1.5 text-slate-300">
+                  {business.mapsPhone || "—"}
+                  {business.mapsPhone && !isValidSpanishPhone(business.mapsPhone) && (
+                    <span title="No parece un teléfono español válido" className="text-amber-400">
+                      <TriangleAlert className="h-3 w-3" strokeWidth={2.5} />
+                    </span>
+                  )}
+                </dd>
                 <dt className="text-slate-500">Tel. web</dt>
-                <dd className="text-slate-300">{business.webPhones.join(", ") || "—"}</dd>
+                <dd className="flex flex-wrap items-center gap-1.5 text-slate-300">
+                  {business.webPhones.length === 0
+                    ? "—"
+                    : business.webPhones.map((p) => (
+                        <span key={p} className="flex items-center gap-1">
+                          {p}
+                          {!isValidSpanishPhone(p) && (
+                            <span title="No parece un teléfono español válido" className="text-amber-400">
+                              <TriangleAlert className="h-3 w-3" strokeWidth={2.5} />
+                            </span>
+                          )}
+                        </span>
+                      ))}
+                </dd>
                 <dt className="text-slate-500">Web</dt>
                 <dd className="truncate text-blue-400">
                   {business.website ? (

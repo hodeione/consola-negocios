@@ -44,6 +44,7 @@ interface Filters {
   dueOnly: boolean;
   staleOnly: boolean;
   forgottenOnly: boolean;
+  maxRating: string; // "" | "3" | "3.5" | "4" — string para encajar en <select>
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -56,6 +57,7 @@ const EMPTY_FILTERS: Filters = {
   dueOnly: false,
   staleOnly: false,
   forgottenOnly: false,
+  maxRating: "",
 };
 
 const STALE_DAYS = 90;
@@ -75,6 +77,7 @@ function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: st
     sp.set("staleBefore", d.toISOString());
   }
   if (filters.forgottenOnly) sp.set("forgottenOnly", "true");
+  if (filters.maxRating) sp.set("maxRating", filters.maxRating);
   sp.set("page", String(page));
   sp.set("pageSize", String(pageSize));
   sp.set("sortBy", sortBy);
@@ -238,6 +241,7 @@ export function BusinessesConsole({
     filters.dueOnly ||
     filters.staleOnly ||
     filters.forgottenOnly ||
+    filters.maxRating ||
     searchInput;
 
   return (
@@ -333,6 +337,17 @@ export function BusinessesConsole({
           placeholder="Etiqueta"
           className="w-28 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
         />
+        <select
+          value={filters.maxRating}
+          onChange={(e) => updateFilter("maxRating", e.target.value)}
+          title="Solo negocios con rating por debajo de este umbral (más necesitados de mejorar su presencia online)"
+          className="rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+        >
+          <option value="">Rating: cualquiera</option>
+          <option value="3">≤ 3★</option>
+          <option value="3.5">≤ 3.5★</option>
+          <option value="4">≤ 4★</option>
+        </select>
 
         <div className="flex gap-1">
           {STATUS_OPTIONS.map((s) => (

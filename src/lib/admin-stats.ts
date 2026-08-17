@@ -50,11 +50,12 @@ export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]>
       where: { assignedToUserId: { in: userIds }, nextFollowUpAt: { lte: endOfToday } },
       _count: { _all: true },
     }),
-    // Cualquier fichaje que se solape con el rango: empezó antes de `to` y
-    // (sigue abierto, o terminó después de `from`).
+    // Cualquier fichaje de trabajo (no vacaciones/ausencia) que se solape con
+    // el rango: empezó antes de `to` y (sigue abierto, o terminó después de `from`).
     prisma.timeEntry.findMany({
       where: {
         userId: { in: userIds },
+        type: "WORK",
         clockIn: { lte: to },
         OR: [{ clockOut: null }, { clockOut: { gte: from } }],
       },
@@ -169,7 +170,7 @@ export async function getAgentDetail(userId: string, from: Date, to: Date): Prom
 
   const [entries, calls, audits] = await Promise.all([
     prisma.timeEntry.findMany({
-      where: { userId, clockIn: { lte: to }, OR: [{ clockOut: null }, { clockOut: { gte: from } }] },
+      where: { userId, type: "WORK", clockIn: { lte: to }, OR: [{ clockOut: null }, { clockOut: { gte: from } }] },
       orderBy: { clockIn: "asc" },
       select: { clockIn: true, clockOut: true },
     }),

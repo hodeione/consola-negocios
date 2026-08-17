@@ -24,6 +24,7 @@ export interface BusinessFilters {
   batchJobId?: string;
   // Solo negocios cuyo lastVerifiedAt sea anterior a esta fecha — "datos desactualizados".
   staleBefore?: Date;
+  maxRating?: number;
 }
 
 function parseCsv<T extends string>(value: string | null, allowed: readonly T[]): T[] | undefined {
@@ -37,6 +38,8 @@ export function parseBusinessFilters(searchParams: URLSearchParams): BusinessFil
   const dueBefore = dueBeforeRaw ? new Date(dueBeforeRaw) : undefined;
   const staleBeforeRaw = searchParams.get("staleBefore");
   const staleBefore = staleBeforeRaw ? new Date(staleBeforeRaw) : undefined;
+  const maxRatingRaw = searchParams.get("maxRating");
+  const maxRating = maxRatingRaw ? Number(maxRatingRaw) : undefined;
 
   return {
     status: parseCsv(searchParams.get("status"), CALL_STATUSES),
@@ -49,6 +52,7 @@ export function parseBusinessFilters(searchParams: URLSearchParams): BusinessFil
     dueBefore: dueBefore && !isNaN(dueBefore.getTime()) ? dueBefore : undefined,
     batchJobId: searchParams.get("batchJobId")?.trim() || undefined,
     staleBefore: staleBefore && !isNaN(staleBefore.getTime()) ? staleBefore : undefined,
+    maxRating: maxRating !== undefined && !isNaN(maxRating) ? maxRating : undefined,
   };
 }
 
@@ -81,6 +85,9 @@ export function buildBusinessWhere(
   if (filters.batchJobId) where.sourceTask = { batchJobId: filters.batchJobId };
   if (filters.dueBefore) where.nextFollowUpAt = { lte: filters.dueBefore };
   if (filters.staleBefore) where.lastVerifiedAt = { lte: filters.staleBefore };
+  // rating > 0 a propósito: 0 significa "sin dato de rating", no "0 estrellas"
+  // — no tiene sentido mezclarlo con negocios que de verdad puntúan bajo.
+  if (filters.maxRating !== undefined) where.rating = { gt: 0, lte: filters.maxRating };
 
   if (filters.search) {
     where.OR = [

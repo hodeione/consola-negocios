@@ -58,7 +58,12 @@ export default async function Home() {
       where: { userId: user.id, createdAt: { gte: startOfToday, lte: endOfToday } },
     }),
     prisma.timeEntry.findMany({
-      where: { userId: user.id, clockIn: { lte: endOfToday }, OR: [{ clockOut: null }, { clockOut: { gte: startOfToday } }] },
+      where: {
+        userId: user.id,
+        type: "WORK",
+        clockIn: { lte: endOfToday },
+        OR: [{ clockOut: null }, { clockOut: { gte: startOfToday } }],
+      },
       select: { clockIn: true, clockOut: true },
     }),
   ]);
