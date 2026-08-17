@@ -60,6 +60,7 @@ function placeToBusinessFields(detail: PlaceDetails, task: ScrapeTask) {
     address: detail.address,
     mapsPhone: detail.phone,
     website: detail.website,
+    mapsUrl: detail.sourceUrl,
     rating: detail.rating,
     category: detail.category,
     zone: task.zone,

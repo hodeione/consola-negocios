@@ -49,6 +49,7 @@ const COL = {
   product: 19,
   dealValue: 20,
   closedAt: 21,
+  mapsUrl: 22,
 };
 
 function cellText(cell: ExcelJS.Cell): string {
@@ -142,6 +143,7 @@ export async function POST(request: Request) {
       address: cellText(row.getCell(COL.address)),
       mapsPhone,
       website,
+      mapsUrl: cellText(row.getCell(COL.mapsUrl)),
       emails,
       webPhones,
       rating,

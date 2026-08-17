@@ -26,6 +26,8 @@ const patchSchema = z.object({
   dealValue: z.number().min(0).max(10_000_000).optional(),
   product: z.enum(PRODUCT).nullable().optional(),
   closedAt: z.string().datetime().nullable().optional(),
+  flaggedIncorrect: z.boolean().optional(),
+  flaggedIncorrectNote: z.string().max(300).optional(),
 });
 
 function canAccess(business: { assignedToUserId: string | null; ownerId: string }, user: { id: string; role: string }) {
@@ -96,6 +98,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   if (rest.tags && JSON.stringify([...rest.tags].sort()) !== JSON.stringify([...business.tags].sort())) {
     auditEntries.push({ action: "tags_changed", detail: rest.tags.join(", ") || "(sin etiquetas)" });
+  }
+  if (rest.flaggedIncorrect !== undefined && rest.flaggedIncorrect !== business.flaggedIncorrect) {
+    auditEntries.push({
+      action: rest.flaggedIncorrect ? "flagged_incorrect" : "unflagged_incorrect",
+      detail: rest.flaggedIncorrectNote || "",
+    });
   }
 
   const updated = await prisma.business.update({

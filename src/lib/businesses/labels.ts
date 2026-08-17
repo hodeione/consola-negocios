@@ -47,9 +47,32 @@ export const PRODUCT_LABEL: Record<string, string> = {
 export const PRODUCT_OPTIONS = Object.keys(PRODUCT_LABEL);
 
 // Auditoría: etiqueta legible para cada tipo de evento de AuditLog.
+/** % de campos "de scraping" rellenos — para priorizar qué fichas enriquecer. */
+export function completenessScore(b: {
+  address: string;
+  mapsPhone: string;
+  website: string;
+  emails: string[];
+  webPhones: string[];
+  category: string;
+  rating: number;
+}): number {
+  const checks = [
+    !!b.address,
+    !!b.mapsPhone || b.webPhones.length > 0,
+    !!b.website,
+    b.emails.length > 0,
+    !!b.category,
+    b.rating > 0,
+  ];
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+}
+
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
   reassigned: "Reasignado",
   priority_changed: "Prioridad cambiada",
   status_changed: "Estado cambiado",
   tags_changed: "Etiquetas cambiadas",
+  flagged_incorrect: "Marcado como dato incorrecto",
+  unflagged_incorrect: "Desmarcado",
 };

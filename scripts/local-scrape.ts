@@ -25,15 +25,16 @@ interface Row {
   rating: number;
   category: string;
   dedupeKey: string;
+  mapsUrl: string;
 }
 
 const HEADERS = [
   "Nombre", "Zona", "Keyword", "Dirección", "Tel. Maps", "Web", "Emails",
   "Tel. Web", "Rating", "Categoría", "Estado", "Prioridad", "Contacto",
   "Cargo", "Etiquetas", "Próxima llamada", "Último contacto", "Asignado a",
-  "Producto", "Importe", "Fecha de cierre",
+  "Producto", "Importe", "Fecha de cierre", "Maps URL",
 ];
-const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16];
+const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16, 34];
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -88,6 +89,7 @@ async function enrichAndFilter(details: PlaceDetails[], zone: string, keyword: s
       rating: d.rating,
       category: d.category,
       dedupeKey: buildDedupeKey({ website: d.website, phone: d.phone, name: d.name }),
+      mapsUrl: d.sourceUrl,
     });
   }
   return rows;
@@ -110,6 +112,7 @@ async function writeXlsx(rows: Row[], filename: string) {
       r.name, r.zone, r.keyword, r.address, r.mapsPhone, r.website,
       r.emails.join("; "), r.webPhones.join("; "), r.rating || "", r.category,
       "", "", "", "", "", "", "", "", "", "", "", // Estado/Prioridad/Contacto/.../Venta — se rellenan al importar o al gestionar
+      r.mapsUrl,
     ]);
     const fill: ExcelJS.Fill = {
       type: "pattern", pattern: "solid",

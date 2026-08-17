@@ -187,12 +187,20 @@ model Business {
   address    String   @default("")
   mapsPhone  String   @default("")
   website    String   @default("")
+  // Enlace real a la ficha de Google Maps — permite re-scrapearla más
+  // adelante sin tener que repetir la búsqueda entera. Puede faltar en
+  // negocios guardados antes de que existiera este campo.
+  mapsUrl    String   @default("")
   emails     String[]
   webPhones  String[]
   rating     Float    @default(0)
   category   String   @default("")
   zone       String
   keyword    String
+  // Alguien marcó algún dato de esta ficha como incorrecto/caducado —
+  // señal para revisar, no se borra ni se corrige solo.
+  flaggedIncorrect    Boolean  @default(false)
+  flaggedIncorrectNote String  @default("")
 
   // Gestión / CRM
   status         CallStatus @default(PENDING)

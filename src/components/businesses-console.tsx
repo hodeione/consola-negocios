@@ -8,6 +8,7 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   Download,
   Mail,
   Phone,
@@ -40,6 +41,7 @@ interface Filters {
   assignedTo: string; // "" | "me" | "unassigned" | userId
   dueOnly: boolean;
   staleOnly: boolean;
+  forgottenOnly: boolean;
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -51,6 +53,7 @@ const EMPTY_FILTERS: Filters = {
   assignedTo: "",
   dueOnly: false,
   staleOnly: false,
+  forgottenOnly: false,
 };
 
 const STALE_DAYS = 90;
@@ -69,6 +72,7 @@ function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: st
     d.setDate(d.getDate() - STALE_DAYS);
     sp.set("staleBefore", d.toISOString());
   }
+  if (filters.forgottenOnly) sp.set("forgottenOnly", "true");
   sp.set("page", String(page));
   sp.set("pageSize", String(pageSize));
   sp.set("sortBy", sortBy);
@@ -230,6 +234,7 @@ export function BusinessesConsole({
     filters.assignedTo ||
     filters.dueOnly ||
     filters.staleOnly ||
+    filters.forgottenOnly ||
     searchInput;
 
   return (
@@ -269,6 +274,21 @@ export function BusinessesConsole({
           >
             <ShieldAlert className="h-3.5 w-3.5" strokeWidth={2.25} />
             Desactualizados
+          </button>
+          <button
+            onClick={() => {
+              setPage(1);
+              setFilters((f) => ({ ...f, forgottenOnly: !f.forgottenOnly }));
+            }}
+            title="En el pipeline (no cerrados) desde hace tiempo y sin llamadas en 30 días"
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              filters.forgottenOnly
+                ? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30"
+                : "border border-slate-800 text-slate-300 hover:border-slate-700"
+            }`}
+          >
+            <Clock3 className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Olvidados
           </button>
           <button
             onClick={exportCurrentView}

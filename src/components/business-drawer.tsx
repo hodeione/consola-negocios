@@ -4,10 +4,15 @@ import { useEffect, useState } from "react";
 import {
   Banknote,
   CheckCheck,
+  ExternalLink,
+  Flag,
+  FlagOff,
+  Gauge,
   History,
   Loader2,
   MapPin,
   PhoneCall,
+  RefreshCw,
   Save,
   ShieldAlert,
   Star,
@@ -18,6 +23,7 @@ import {
 import { queuedFetch } from "@/lib/fetch-queue";
 import {
   AUDIT_ACTION_LABEL,
+  completenessScore,
   PRIORITY_LABEL,
   PRIORITY_OPTIONS,
   PRODUCT_LABEL,
@@ -94,6 +100,18 @@ export function BusinessDrawer({
   const [callFollowUpDate, setCallFollowUpDate] = useState("");
   const [loggingCall, setLoggingCall] = useState(false);
 
+  const [rescraping, setRescraping] = useState(false);
+  const [flagNote, setFlagNote] = useState("");
+  const [flagging, setFlagging] = useState(false);
+
+  // Recarga la ficha completa (incluye auditLogs/callActivities, que el PATCH
+  // de guardar cambios no devuelve) — para que el Historial se vea al día
+  // sin tener que cerrar y volver a abrir el cajón.
+  async function refetchDetail() {
+    const res = await queuedFetch(`/api/businesses/${businessId}`);
+    if (res.ok) setBusiness(await res.json());
+  }
+
   useEffect(() => {
     let cancelled = false;
     queuedFetch(`/api/businesses/${businessId}`)
@@ -142,8 +160,8 @@ export function BusinessDrawer({
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || "Error guardando");
       const updated = await res.json();
-      setBusiness((prev) => (prev ? { ...prev, ...updated } : prev));
       onUpdated(updated);
+      await refetchDetail(); // trae también los AuditLog que el PATCH haya generado
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -183,6 +201,45 @@ export function BusinessDrawer({
     }
   }
 
+  async function handleRescrape() {
+    setRescraping(true);
+    setError(null);
+    try {
+      const res = await queuedFetch(`/api/businesses/${businessId}/rescrape`, { method: "POST" });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated?.error || "Error re-scrapeando");
+      setBusiness((prev) => (prev ? { ...prev, ...updated } : prev));
+      onUpdated(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRescraping(false);
+    }
+  }
+
+  async function handleToggleFlag() {
+    if (!business) return;
+    const next = !business.flaggedIncorrect;
+    setFlagging(true);
+    setError(null);
+    try {
+      const res = await queuedFetch(`/api/businesses/${businessId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flaggedIncorrect: next, flaggedIncorrectNote: next ? flagNote : "" }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || "Error guardando");
+      const updated = await res.json();
+      onUpdated(updated);
+      if (next) setFlagNote("");
+      await refetchDetail();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFlagging(false);
+    }
+  }
+
   function addTag() {
     const t = tagInput.trim();
     if (t && !tags.includes(t)) setTags((prev) => [...prev, t]);
@@ -219,7 +276,42 @@ export function BusinessDrawer({
           <div className="flex flex-1 flex-col gap-5 p-5">
             {/* Datos scrapeados (solo lectura) */}
             <section className="surface p-4 text-sm">
-              <SectionTitle>Datos del negocio</SectionTitle>
+              <div className="mb-3 flex items-center justify-between">
+                <SectionTitle className="!mb-0">Datos del negocio</SectionTitle>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="flex items-center gap-1 text-[10px] font-semibold text-slate-500"
+                    title="% de campos de scraping rellenos"
+                  >
+                    <Gauge className="h-3 w-3" strokeWidth={2.25} />
+                    {completenessScore(business)}%
+                  </span>
+                  {business.mapsUrl && (
+                    <a
+                      href={business.mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Abrir en Google Maps"
+                      className="text-slate-500 hover:text-slate-300"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" strokeWidth={2.25} />
+                    </a>
+                  )}
+                  <button
+                    onClick={handleRescrape}
+                    disabled={rescraping || !business.mapsUrl}
+                    title={business.mapsUrl ? "Volver a leer esta ficha en Maps" : "Sin enlace de Maps guardado — no se puede re-scrapear"}
+                    className="flex items-center gap-1 rounded-md border border-slate-800 px-2 py-1 text-[10px] font-semibold text-slate-400 transition hover:border-slate-700 hover:text-slate-200 disabled:opacity-30"
+                  >
+                    {rescraping ? (
+                      <Loader2 className="h-3 w-3 animate-spin" strokeWidth={2.5} />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" strokeWidth={2.25} />
+                    )}
+                    {rescraping ? "Leyendo…" : "Re-scrapear"}
+                  </button>
+                </div>
+              </div>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
                 <dt className="text-slate-500">Dirección</dt>
                 <dd className="text-slate-300">{business.address || "—"}</dd>
@@ -267,6 +359,42 @@ export function BusinessDrawer({
                   )}
                 </dd>
               </dl>
+
+              <div className="mt-3 border-t border-slate-800/70 pt-3">
+                {business.flaggedIncorrect ? (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs">
+                    <span className="flex items-center gap-1.5 text-red-300">
+                      <Flag className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2.25} />
+                      {business.flaggedIncorrectNote || "Marcado como dato incorrecto"}
+                    </span>
+                    <button
+                      onClick={handleToggleFlag}
+                      disabled={flagging}
+                      className="flex flex-shrink-0 items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-200"
+                    >
+                      <FlagOff className="h-3 w-3" strokeWidth={2.5} />
+                      Desmarcar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={flagNote}
+                      onChange={(e) => setFlagNote(e.target.value)}
+                      placeholder="Motivo (teléfono caducado, negocio cerrado…)"
+                      className="flex-1 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-xs text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
+                    />
+                    <button
+                      onClick={handleToggleFlag}
+                      disabled={flagging}
+                      className="flex flex-shrink-0 items-center gap-1 rounded-lg border border-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-slate-400 transition hover:border-red-500/40 hover:text-red-300"
+                    >
+                      <Flag className="h-3 w-3" strokeWidth={2.25} />
+                      Marcar dato incorrecto
+                    </button>
+                  </div>
+                )}
+              </div>
             </section>
 
             {/* Formulario de gestión */}
