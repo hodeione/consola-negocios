@@ -18,6 +18,7 @@ import { queuedFetch } from "@/lib/fetch-queue";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
 import type { AgentStats } from "@/lib/admin-stats";
 import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
+import { ConversionInsights } from "@/components/conversion-insights";
 
 interface TimeEntryRow {
   id: string;
@@ -263,6 +264,8 @@ export function AdminStatsConsole({
             </div>
           )}
         </section>
+
+        <ConversionInsights />
       </div>
 
       {openAgent && (

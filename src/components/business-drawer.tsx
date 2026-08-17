@@ -108,6 +108,8 @@ export function BusinessDrawer({
   const [rescraping, setRescraping] = useState(false);
   const [flagNote, setFlagNote] = useState("");
   const [flagging, setFlagging] = useState(false);
+  const [checkingWeb, setCheckingWeb] = useState(false);
+  const [webCheck, setWebCheck] = useState<{ alive: boolean; status: number | null } | null>(null);
 
   // Recarga la ficha completa (incluye auditLogs/callActivities, que el PATCH
   // de guardar cambios no devuelve) — para que el Historial se vea al día
@@ -223,6 +225,21 @@ export function BusinessDrawer({
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setRescraping(false);
+    }
+  }
+
+  async function handleCheckWebsite() {
+    setCheckingWeb(true);
+    setWebCheck(null);
+    try {
+      const res = await queuedFetch(`/api/businesses/${businessId}/check-website`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) setWebCheck({ alive: data.alive, status: data.status });
+      else setError(data?.error || "Error comprobando la web");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCheckingWeb(false);
     }
   }
 
@@ -353,11 +370,32 @@ export function BusinessDrawer({
                       ))}
                 </dd>
                 <dt className="text-slate-500">Web</dt>
-                <dd className="truncate text-blue-400">
+                <dd className="flex items-center gap-1.5 truncate">
                   {business.website ? (
-                    <a href={business.website} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {business.website}
-                    </a>
+                    <>
+                      <a href={business.website} target="_blank" rel="noopener noreferrer" className="truncate text-blue-400 hover:underline">
+                        {business.website}
+                      </a>
+                      <button
+                        onClick={handleCheckWebsite}
+                        disabled={checkingWeb}
+                        title="Comprobar si la web sigue respondiendo"
+                        className="flex-shrink-0 text-[10px] font-semibold text-slate-500 hover:text-slate-300 disabled:opacity-40"
+                      >
+                        {checkingWeb ? "…" : "comprobar"}
+                      </button>
+                      {webCheck && (
+                        <span
+                          className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                            webCheck.alive
+                              ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                              : "bg-red-500/10 text-red-300 border border-red-500/20"
+                          }`}
+                        >
+                          {webCheck.alive ? "activa" : `caída${webCheck.status ? ` (${webCheck.status})` : ""}`}
+                        </span>
+                      )}
+                    </>
                   ) : (
                     "—"
                   )}

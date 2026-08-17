@@ -4,9 +4,13 @@ import { useState } from "react";
 import {
   ArrowRightLeft,
   CheckCircle2,
+  CircleAlert,
   History,
   KeyRound,
   Loader2,
+  Mail,
+  Radar,
+  ShieldCheck,
   Users,
   UserPlus,
 } from "lucide-react";
@@ -20,6 +24,16 @@ interface AdminUser {
   active: boolean;
   createdAt: string | Date;
   _count: { assignedBusiness: number };
+}
+
+interface SystemHealth {
+  lastTask: { updatedAt: string; label: string; status: string } | null;
+  openEntries: number;
+  staleCount: number;
+  totalBusinesses: number;
+  scrapingEnabled: boolean;
+  emailConfigured: boolean;
+  cronSecretConfigured: boolean;
 }
 
 function initials(name: string) {
@@ -43,9 +57,11 @@ async function errorMessageFrom(res: Response): Promise<string> {
 export function AdminUsersConsole({
   initialUsers,
   currentUserId,
+  health,
 }: {
   initialUsers: AdminUser[];
   currentUserId: string;
+  health: SystemHealth;
 }) {
   const [users, setUsers] = useState<AdminUser[]>(initialUsers);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +108,8 @@ export function AdminUsersConsole({
           </div>
         )}
 
+        <HealthPanel health={health} />
+
         <NewUserForm
           onCreated={(u) => {
             setUsers((prev) => [...prev, u]);
@@ -132,6 +150,83 @@ export function AdminUsersConsole({
           onError={setError}
         />
       </div>
+    </div>
+  );
+}
+
+function HealthPanel({ health }: { health: SystemHealth }) {
+  return (
+    <section className="surface p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <ShieldCheck className="h-3.5 w-3.5 text-slate-500" strokeWidth={2.25} />
+        <h2 className="text-sm font-semibold text-slate-100">Salud del sistema</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <HealthTile
+          icon={Radar}
+          label="Última búsqueda"
+          value={health.lastTask ? new Date(health.lastTask.updatedAt).toLocaleDateString("es-ES") : "nunca"}
+          hint={health.lastTask?.label}
+        />
+        <HealthTile
+          icon={History}
+          label="Fichajes abiertos"
+          value={String(health.openEntries)}
+          warn={health.openEntries > 0}
+        />
+        <HealthTile
+          icon={CircleAlert}
+          label="Datos desactualizados"
+          value={`${health.staleCount} / ${health.totalBusinesses}`}
+          warn={health.staleCount > 0}
+        />
+        <HealthTile
+          icon={Mail}
+          label="Email"
+          value={health.emailConfigured ? "configurado" : "solo log"}
+          warn={!health.emailConfigured}
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
+        <span>
+          Scraping en la nube:{" "}
+          <span className={health.scrapingEnabled ? "text-emerald-400" : "text-slate-400"}>
+            {health.scrapingEnabled ? "activado" : "desactivado (kill switch)"}
+          </span>
+        </span>
+        <span>·</span>
+        <span>
+          Cron protegido:{" "}
+          <span className={health.cronSecretConfigured ? "text-emerald-400" : "text-amber-400"}>
+            {health.cronSecretConfigured ? "sí (CRON_SECRET)" : "no — cualquiera podría llamarlo"}
+          </span>
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function HealthTile({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  warn,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  label: string;
+  value: string;
+  hint?: string;
+  warn?: boolean;
+}) {
+  return (
+    <div className="rounded-lg bg-slate-900/60 p-3">
+      <div className="mb-1 flex items-center gap-1.5 text-slate-500">
+        <Icon className="h-3 w-3" strokeWidth={2.25} />
+        <span className="text-[10px]">{label}</span>
+      </div>
+      <div className={`text-sm font-semibold ${warn ? "text-amber-400" : "text-slate-200"}`}>{value}</div>
+      {hint && <div className="truncate text-[10px] text-slate-600">{hint}</div>}
     </div>
   );
 }
