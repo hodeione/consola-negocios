@@ -37,8 +37,27 @@ model User {
   callActivities    CallActivity[]
   timeEntries       TimeEntry[]
   auditLogs         AuditLog[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Recuperar contraseña: token de un solo uso enviado por email. Se
+// guarda el HASH del token (nunca el token en claro) — igual que una
+// contraseña, así una fuga de la base de datos no lo compromete.
+// ─────────────────────────────────────────────────────────────
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // ─────────────────────────────────────────────────────────────

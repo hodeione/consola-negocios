@@ -3,11 +3,15 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
+// Accesibles sin sesión, además de /login: el flujo de "olvidé mi contraseña".
+const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/reset-password"]);
+
 export const proxy = auth((req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
   const isAdmin = req.auth?.user?.role === "ADMIN";
   const isLoginPage = nextUrl.pathname === "/login";
+  const isPublicPath = PUBLIC_PATHS.has(nextUrl.pathname);
 
   // Peticiones de fondo (prefetch de <Link>, revalidación especulativa del
   // router) nunca deben arrastrar la pestaña entera a /login si la sesión
@@ -19,7 +23,7 @@ export const proxy = auth((req) => {
     req.headers.get("purpose") === "prefetch" ||
     req.headers.get("sec-purpose")?.includes("prefetch");
 
-  if (!isLoggedIn && !isLoginPage) {
+  if (!isLoggedIn && !isPublicPath) {
     if (isBackgroundRequest) return NextResponse.next();
     const url = new URL("/login", nextUrl);
     url.searchParams.set("callbackUrl", nextUrl.pathname);
@@ -36,6 +40,8 @@ export const proxy = auth((req) => {
 });
 
 export const config = {
-  // Todo excepto assets estáticos y la propia API de auth.
-  matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // Todo excepto assets estáticos, la propia API de auth y las rutas de
+  // cron (Vercel las llama sin cookie de sesión — se autentican solas con
+  // CRON_SECRET, ver src/app/api/cron/daily-reminders/route.ts).
+  matcher: ["/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico).*)"],
 };

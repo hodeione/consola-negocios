@@ -4,5 +4,11 @@
     "src/app/api/scrape-tasks/[id]/step/route.ts": {
       "memory": 2048
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/daily-reminders",
+      "schedule": "0 8 * * *"
+    }
+  ]
 }

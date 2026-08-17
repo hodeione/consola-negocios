@@ -1,12 +1,13 @@
-import { AlertCircle, Lock, Mail, Radar } from "lucide-react";
+import { AlertCircle, CheckCircle2, Lock, Mail, Radar } from "lucide-react";
+import Link from "next/link";
 import { loginAction } from "./actions";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string; reset?: string }>;
 }) {
-  const { error, callbackUrl } = await searchParams;
+  const { error, callbackUrl, reset } = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -30,6 +31,12 @@ export default async function LoginPage({
               Email o contraseña incorrectos.
             </div>
           )}
+          {reset && !error && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0" strokeWidth={2.25} />
+              Contraseña actualizada — ya puedes iniciar sesión con la nueva.
+            </div>
+          )}
 
           <form action={loginAction} className="space-y-4">
             <input type="hidden" name="callbackUrl" value={callbackUrl || "/"} />
@@ -47,7 +54,12 @@ export default async function LoginPage({
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-400">Contraseña</label>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-xs font-medium text-slate-400">Contraseña</label>
+                <Link href="/forgot-password" className="text-[11px] font-medium text-blue-400 hover:text-blue-300">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" strokeWidth={2} />
                 <input
