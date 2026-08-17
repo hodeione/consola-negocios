@@ -2,9 +2,11 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   CalendarClock,
+  Phone,
   PhoneCall,
   Radar,
   Sparkles,
+  Timer,
   Trophy,
 } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -24,10 +26,12 @@ export default async function Home() {
   const where = buildBusinessWhere({}, user);
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
 
   const taskScope = user.role === "ADMIN" ? {} : { ownerId: user.id };
 
-  const [total, byStatusRaw, dueSoon, activeTasks, recentBatches] = await Promise.all([
+  const [total, byStatusRaw, dueSoon, activeTasks, recentBatches, callsToday, todaysEntries] = await Promise.all([
     prisma.business.count({ where }),
     prisma.business.groupBy({ by: ["status"], where, _count: { _all: true } }),
     prisma.business.findMany({
@@ -48,7 +52,23 @@ export default async function Home() {
       take: 4,
       include: { tasks: { select: { status: true, foundCount: true } } },
     }),
+    // Actividad propia de hoy — esta sí es siempre "tuya", agente o admin.
+    prisma.callActivity.count({
+      where: { userId: user.id, createdAt: { gte: startOfToday, lte: endOfToday } },
+    }),
+    prisma.timeEntry.findMany({
+      where: { userId: user.id, clockIn: { lte: endOfToday }, OR: [{ clockOut: null }, { clockOut: { gte: startOfToday } }] },
+      select: { clockIn: true, clockOut: true },
+    }),
   ]);
+
+  const hoursToday =
+    todaysEntries.reduce((acc, e) => {
+      const overlapStart = Math.max(e.clockIn.getTime(), startOfToday.getTime());
+      const overlapEnd = Math.min((e.clockOut ?? new Date()).getTime(), endOfToday.getTime());
+      return acc + Math.max(0, overlapEnd - overlapStart);
+    }, 0) / 3_600_000;
+  const hoursTodayLabel = hoursToday >= 0.05 ? `${hoursToday.toFixed(1)}h` : "0h";
 
   const byStatus = Object.fromEntries(byStatusRaw.map((s) => [s.status, s._count._all]));
   const firstName = user.name.split(" ")[0];
@@ -95,6 +115,12 @@ export default async function Home() {
           <Kpi label="Toca llamar hoy" value={dueSoon.length} icon={CalendarClock} tone="amber" />
           <Kpi label="Interesados" value={byStatus.INTERESTED ?? 0} icon={PhoneCall} tone="emerald" />
           <Kpi label="Clientes" value={byStatus.CUSTOMER ?? 0} icon={Trophy} tone="purple" />
+        </div>
+
+        {/* ── Tu actividad de hoy ──────────────────── */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Kpi label="Tus llamadas hoy" value={callsToday} icon={Phone} tone="blue" />
+          <Kpi label="Tus horas fichadas hoy" value={hoursTodayLabel} icon={Timer} tone="emerald" />
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -183,7 +209,7 @@ function Kpi({
   tone,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   tone: "blue" | "amber" | "emerald" | "purple";
 }) {

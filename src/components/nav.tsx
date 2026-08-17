@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LogOut, Radar, Search, Users } from "lucide-react";
+import { BarChart3, Building2, LogOut, Radar, Search, Users } from "lucide-react";
 import { signOutAction } from "@/lib/actions/auth-actions";
+import { ClockWidget } from "@/components/clock-widget";
 
 export function Nav({ user }: { user: { name: string; email: string; role: string } }) {
   const pathname = usePathname();
@@ -11,7 +12,12 @@ export function Nav({ user }: { user: { name: string; email: string; role: strin
   const links = [
     { href: "/businesses", label: "Negocios", icon: Building2 },
     { href: "/scrape", label: "Buscar", icon: Search },
-    ...(user.role === "ADMIN" ? [{ href: "/admin/users", label: "Usuarios", icon: Users }] : []),
+    ...(user.role === "ADMIN"
+      ? [
+          { href: "/admin/stats", label: "Estadísticas", icon: BarChart3 },
+          { href: "/admin/users", label: "Usuarios", icon: Users },
+        ]
+      : []),
   ];
 
   return (
@@ -48,6 +54,7 @@ export function Nav({ user }: { user: { name: string; email: string; role: strin
         </nav>
       </div>
       <div className="flex items-center gap-3">
+        <ClockWidget />
         <div className="flex items-center gap-2 rounded-md border border-slate-800/80 bg-slate-900/60 py-1 pl-1 pr-3">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[10px] font-semibold text-slate-300">
             {user.name.slice(0, 1).toUpperCase()}

@@ -57,3 +57,6 @@ qa-*.xlsx
 # datos de negocios exportados/scrapeados (son datos del usuario, no código)
 negocios-*.xlsx
 negocios-local-*.xlsx
+
+.vercel
+.env*

@@ -35,8 +35,29 @@ model User {
   ownedBusinesses   Business[]    @relation("BusinessOwner")
   assignedBusiness  Business[]    @relation("BusinessAssignee")
   callActivities    CallActivity[]
+  timeEntries       TimeEntry[]
 
   @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Control horario: un fichaje = una entrada abierta (clockOut null)
+// hasta que se cierra. Solo puede haber un fichaje abierto por usuario
+// a la vez (se comprueba en la API, no aquí).
+// ─────────────────────────────────────────────────────────────
+model TimeEntry {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clockIn   DateTime  @default(now())
+  clockOut  DateTime?
+  // Si el admin corrige un fichaje a mano (olvidado, mal cerrado...) queda anotado.
+  editedByAdmin Boolean @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, clockIn])
+  @@map("time_entries")
 }
 
 // ─────────────────────────────────────────────────────────────
