@@ -84,5 +84,62 @@ export async function GET(request: NextRequest) {
     if (result.sent) emailsSent++;
   }
 
-  return NextResponse.json({ usersChecked: users.length, emailsSent, usersWithNothingDue });
+  const forgottenClockInsSent = await notifyForgottenClockIns();
+
+  return NextResponse.json({ usersChecked: users.length, emailsSent, usersWithNothingDue, forgottenClockInsSent });
+}
+
+const FORGOTTEN_CLOCK_IN_HOURS = 12;
+
+/**
+ * Fichajes que llevan abiertos demasiado tiempo (nadie fichó salida) — se
+ * avisa a los admins, no a la propia persona, porque si se le olvidó fichar
+ * salida probablemente tampoco vaya a ver el aviso hasta el día siguiente de
+ * todos modos, y es al admin a quien le toca corregirlo desde /admin/stats.
+ */
+async function notifyForgottenClockIns(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setHours(cutoff.getHours() - FORGOTTEN_CLOCK_IN_HOURS);
+
+  const openEntries = await prisma.timeEntry.findMany({
+    where: { clockOut: null, clockIn: { lte: cutoff } },
+    include: { user: { select: { name: true } } },
+  });
+  if (openEntries.length === 0) return 0;
+
+  const adminUsers = await prisma.user.findMany({ where: { role: "ADMIN", active: true }, select: { email: true, name: true } });
+  if (adminUsers.length === 0) return 0;
+
+  const rows = openEntries
+    .map((e) => {
+      const hours = Math.round((Date.now() - e.clockIn.getTime()) / 3_600_000);
+      return `<tr>
+        <td style="padding:6px 0; color:#e8edf4; font-size:13px;">${e.user.name}</td>
+        <td style="padding:6px 0; color:#93a3b8; font-size:12px;">desde ${e.clockIn.toLocaleString("es-ES")} (${hours}h)</td>
+      </tr>`;
+    })
+    .join("");
+
+  let sent = 0;
+  for (const admin of adminUsers) {
+    const result = await sendEmail({
+      to: admin.email,
+      subject: `${openEntries.length} fichaje(s) sin cerrar hace más de ${FORGOTTEN_CLOCK_IN_HOURS}h`,
+      html: emailShell(
+        "Fichajes olvidados",
+        `
+          <p style="color:#93a3b8; font-size:14px; line-height:1.6;">
+            Estos fichajes siguen abiertos desde hace más de ${FORGOTTEN_CLOCK_IN_HOURS} horas — probablemente
+            alguien olvidó fichar salida:
+          </p>
+          <table style="width:100%; border-collapse:collapse; margin-top:8px;">${rows}</table>
+          <a href="${appOrigin()}/admin/stats" style="display:inline-block; margin-top:18px; background:#2563eb; color:#fff; padding:9px 18px; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600;">
+            Corregir en Estadísticas
+          </a>
+        `
+      ),
+    });
+    if (result.sent) sent++;
+  }
+  return sent;
 }

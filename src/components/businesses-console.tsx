@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Copy,
   Download,
   Mail,
   Phone,
@@ -27,6 +28,7 @@ import {
   STATUS_OPTIONS,
 } from "@/lib/businesses/labels";
 import { BusinessDrawer } from "@/components/business-drawer";
+import { DuplicatesModal } from "@/components/duplicates-modal";
 
 type AssignedTo = { id: string; name: string } | null;
 export type BusinessRow = Business & { assignedTo: AssignedTo };
@@ -117,6 +119,7 @@ export function BusinessesConsole({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
 
   const firstLoad = useRef(true);
 
@@ -289,6 +292,13 @@ export function BusinessesConsole({
           >
             <Clock3 className="h-3.5 w-3.5" strokeWidth={2.25} />
             Olvidados
+          </button>
+          <button
+            onClick={() => setShowDuplicates(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-slate-700"
+          >
+            <Copy className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Duplicados
           </button>
           <button
             onClick={exportCurrentView}
@@ -592,6 +602,16 @@ export function BusinessesConsole({
           assignableUsers={assignableUsers}
           onClose={() => setOpenId(null)}
           onUpdated={handleBusinessUpdated}
+        />
+      )}
+
+      {showDuplicates && (
+        <DuplicatesModal
+          onClose={() => setShowDuplicates(false)}
+          onOpenBusiness={(id) => {
+            setShowDuplicates(false);
+            setOpenId(id);
+          }}
         />
       )}
     </div>

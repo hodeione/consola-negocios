@@ -35,6 +35,19 @@ export const PRIORITY_BADGE: Record<string, string> = {
 export const STATUS_OPTIONS = Object.keys(STATUS_LABEL);
 export const PRIORITY_OPTIONS = Object.keys(PRIORITY_LABEL);
 
+// Sugerencias rápidas — no restringen (se puede seguir escribiendo cualquier
+// etiqueta libre), solo reducen que "SEO" / "seo" / "Seo" se fragmenten como
+// si fueran tres etiquetas distintas.
+export const TAG_SUGGESTIONS = [
+  "urgente",
+  "sin web",
+  "web anticuada",
+  "no coge el teléfono",
+  "buen potencial",
+  "ya tiene proveedor",
+  "recontactar",
+];
+
 // Catálogo real de productos vendidos desde la consola.
 export const PRODUCT_LABEL: Record<string, string> = {
   LANDING: "Landing page",

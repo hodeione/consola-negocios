@@ -31,6 +31,7 @@ import {
   STATUS_BADGE,
   STATUS_LABEL,
   STATUS_OPTIONS,
+  TAG_SUGGESTIONS,
 } from "@/lib/businesses/labels";
 import type { BusinessRow } from "@/components/businesses-console";
 
@@ -501,6 +502,20 @@ export function BusinessDrawer({
                     className="w-24 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 outline-none focus:border-blue-500"
                   />
                 </div>
+                {TAG_SUGGESTIONS.some((s) => !tags.includes(s)) && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {TAG_SUGGESTIONS.filter((s) => !tags.includes(s)).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setTags((prev) => [...prev, s])}
+                        className="rounded-full border border-slate-800 px-2 py-0.5 text-[10px] text-slate-500 transition hover:border-slate-700 hover:text-slate-300"
+                      >
+                        + {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </Field>
 
               <div className="mt-4 border-t border-slate-800/70 pt-4">
