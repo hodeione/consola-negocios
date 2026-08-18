@@ -16,6 +16,7 @@ import {
   Search,
   ShieldAlert,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import type { Business } from "@/generated/prisma/client";
@@ -32,6 +33,7 @@ import { BusinessDrawer } from "@/components/business-drawer";
 import { useToast } from "@/components/toast-provider";
 import { DuplicatesModal } from "@/components/duplicates-modal";
 import { ImportExcelModal } from "@/components/import-excel-modal";
+import { AssignByFilterModal } from "@/components/assign-by-filter-modal";
 
 type AssignedTo = { id: string; name: string } | null;
 export type BusinessRow = Business & { assignedTo: AssignedTo };
@@ -131,6 +133,7 @@ export function BusinessesConsole({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showAssignByFilter, setShowAssignByFilter] = useState(false);
 
   const firstLoad = useRef(true);
 
@@ -424,6 +427,16 @@ export function BusinessesConsole({
           </select>
         )}
 
+        {hasActiveFilters && isAdmin && (
+          <button
+            onClick={() => setShowAssignByFilter(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/20"
+          >
+            <Users className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Asignar por filtro ({total})
+          </button>
+        )}
+
         {hasActiveFilters && (
           <button
             onClick={() => {
@@ -666,6 +679,20 @@ export function BusinessesConsole({
           onImported={() => {
             refresh();
             showToast("Negocios importados");
+          }}
+        />
+      )}
+
+      {showAssignByFilter && (
+        <AssignByFilterModal
+          queryString={buildQuery(filters, 1, pageSize, sortBy, sortDir)}
+          matchingCount={total}
+          assignableUsers={assignableUsers}
+          onClose={() => setShowAssignByFilter(false)}
+          onAssigned={(count) => {
+            setShowAssignByFilter(false);
+            refresh();
+            showToast(`${count} negocio(s) asignados`);
           }}
         />
       )}
