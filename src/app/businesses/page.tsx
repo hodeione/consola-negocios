@@ -12,7 +12,7 @@ export default async function BusinessesPage() {
 
   const where = buildBusinessWhere({}, user);
 
-  const [items, total, stats, assignableUsers] = await Promise.all([
+  const [items, total, stats, keywordsRaw, assignableUsers] = await Promise.all([
     prisma.business.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -21,18 +21,25 @@ export default async function BusinessesPage() {
     }),
     prisma.business.count({ where }),
     prisma.business.groupBy({ by: ["status"], where, _count: { _all: true } }),
+    prisma.business.groupBy({
+      by: ["keyword"],
+      where: { ...where, keyword: { not: "" } },
+      _count: { _all: true },
+      orderBy: { _count: { keyword: "desc" } },
+    }),
     user.role === "ADMIN"
       ? prisma.user.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })
       : Promise.resolve([]),
   ]);
 
   const byStatus = Object.fromEntries(stats.map((s) => [s.status, s._count._all]));
+  const keywords = keywordsRaw.map((k) => k.keyword);
 
   return (
     <BusinessesConsole
       initialItems={items}
       initialTotal={total}
-      initialStats={{ total, byStatus }}
+      initialStats={{ total, byStatus, keywords }}
       pageSize={PAGE_SIZE}
       isAdmin={user.role === "ADMIN"}
       assignableUsers={assignableUsers}

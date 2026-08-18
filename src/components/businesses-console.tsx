@@ -42,6 +42,7 @@ interface Filters {
   status: string[];
   priority: string[];
   zone: string;
+  keyword: string;
   tag: string;
   assignedTo: string; // "" | "me" | "unassigned" | userId
   dueOnly: boolean;
@@ -55,6 +56,7 @@ const EMPTY_FILTERS: Filters = {
   status: [],
   priority: [],
   zone: "",
+  keyword: "",
   tag: "",
   assignedTo: "",
   dueOnly: false,
@@ -71,6 +73,7 @@ function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: st
   if (filters.status.length) sp.set("status", filters.status.join(","));
   if (filters.priority.length) sp.set("priority", filters.priority.join(","));
   if (filters.zone) sp.set("zone", filters.zone);
+  if (filters.keyword) sp.set("keyword", filters.keyword);
   if (filters.tag) sp.set("tag", filters.tag);
   if (filters.assignedTo) sp.set("assignedTo", filters.assignedTo);
   if (filters.dueOnly) sp.set("dueBefore", new Date().toISOString());
@@ -107,7 +110,7 @@ export function BusinessesConsole({
 }: {
   initialItems: BusinessRow[];
   initialTotal: number;
-  initialStats: { total: number; byStatus: Record<string, number> };
+  initialStats: { total: number; byStatus: Record<string, number>; keywords: string[] };
   pageSize: number;
   isAdmin: boolean;
   assignableUsers: SimpleUser[];
@@ -243,6 +246,7 @@ export function BusinessesConsole({
     filters.status.length > 0 ||
     filters.priority.length > 0 ||
     filters.zone ||
+    filters.keyword ||
     filters.tag ||
     filters.assignedTo ||
     filters.dueOnly ||
@@ -345,6 +349,18 @@ export function BusinessesConsole({
           placeholder="Zona"
           className="w-36 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500"
         />
+        <select
+          value={filters.keyword}
+          onChange={(e) => updateFilter("keyword", e.target.value)}
+          className="rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+        >
+          <option value="">Tipo de negocio: cualquiera</option>
+          {stats.keywords.map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </select>
         <input
           value={filters.tag}
           onChange={(e) => updateFilter("tag", e.target.value)}

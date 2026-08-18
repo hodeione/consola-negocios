@@ -10,7 +10,7 @@ export async function GET() {
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
 
-  const [total, byStatusRaw, dueToday] = await Promise.all([
+  const [total, byStatusRaw, dueToday, keywordsRaw] = await Promise.all([
     prisma.business.count({ where: scopeWhere }),
     prisma.business.groupBy({
       by: ["status"],
@@ -20,9 +20,16 @@ export async function GET() {
     prisma.business.count({
       where: { ...scopeWhere, nextFollowUpAt: { lte: endOfToday } },
     }),
+    prisma.business.groupBy({
+      by: ["keyword"],
+      where: { ...scopeWhere, keyword: { not: "" } },
+      _count: { _all: true },
+      orderBy: { _count: { keyword: "desc" } },
+    }),
   ]);
 
   const byStatus = Object.fromEntries(byStatusRaw.map((r) => [r.status, r._count._all]));
+  const keywords = keywordsRaw.map((r) => r.keyword);
 
-  return NextResponse.json({ total, byStatus, dueToday });
+  return NextResponse.json({ total, byStatus, dueToday, keywords });
 }
