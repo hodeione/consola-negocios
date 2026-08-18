@@ -15,6 +15,7 @@ import {
   Phone,
   Search,
   ShieldAlert,
+  Upload,
   X,
 } from "lucide-react";
 import type { Business } from "@/generated/prisma/client";
@@ -30,6 +31,7 @@ import {
 import { BusinessDrawer } from "@/components/business-drawer";
 import { useToast } from "@/components/toast-provider";
 import { DuplicatesModal } from "@/components/duplicates-modal";
+import { ImportExcelModal } from "@/components/import-excel-modal";
 
 type AssignedTo = { id: string; name: string } | null;
 export type BusinessRow = Business & { assignedTo: AssignedTo };
@@ -125,6 +127,7 @@ export function BusinessesConsole({
   const showToast = useToast();
   const [bulkBusy, setBulkBusy] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const firstLoad = useRef(true);
 
@@ -314,6 +317,13 @@ export function BusinessesConsole({
           >
             <Download className="h-3.5 w-3.5" strokeWidth={2.25} />
             Exportar Excel
+          </button>
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-slate-700"
+          >
+            <Upload className="h-3.5 w-3.5" strokeWidth={2.25} />
+            Importar Excel
           </button>
         </div>
       </div>
@@ -630,6 +640,16 @@ export function BusinessesConsole({
           onOpenBusiness={(id) => {
             setShowDuplicates(false);
             setOpenId(id);
+          }}
+        />
+      )}
+
+      {showImport && (
+        <ImportExcelModal
+          onClose={() => setShowImport(false)}
+          onImported={() => {
+            refresh();
+            showToast("Negocios importados");
           }}
         />
       )}

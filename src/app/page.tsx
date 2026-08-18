@@ -1,24 +1,11 @@
 import Link from "next/link";
-import {
-  ArrowUpRight,
-  CalendarClock,
-  Phone,
-  PhoneCall,
-  Radar,
-  Sparkles,
-  Timer,
-  Trophy,
-} from "lucide-react";
+import { ArrowUpRight, CalendarClock, Phone, PhoneCall, Sparkles, Timer, Trophy } from "lucide-react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 import { buildBusinessWhere } from "@/lib/businesses/filters";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
 import { fmtHMS } from "@/lib/format";
-import type { ScrapeTaskStatus } from "@/generated/prisma/enums";
-
-const TERMINAL_STATUSES: ScrapeTaskStatus[] = ["DONE", "ERROR", "CANCELLED"];
-const TERMINAL = new Set<string>(TERMINAL_STATUSES);
 
 export default async function Home() {
   const user = await requireUser();
@@ -30,9 +17,7 @@ export default async function Home() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const taskScope = user.role === "ADMIN" ? {} : { ownerId: user.id };
-
-  const [total, byStatusRaw, dueSoon, activeTasks, recentBatches, callsToday, todaysEntries] = await Promise.all([
+  const [total, byStatusRaw, dueSoon, callsToday, todaysEntries] = await Promise.all([
     prisma.business.count({ where }),
     prisma.business.groupBy({ by: ["status"], where, _count: { _all: true } }),
     prisma.business.findMany({
@@ -40,18 +25,6 @@ export default async function Home() {
       orderBy: { nextFollowUpAt: "asc" },
       take: 5,
       select: { id: true, name: true, zone: true, mapsPhone: true, status: true, nextFollowUpAt: true },
-    }),
-    prisma.scrapeTask.findMany({
-      where: { ...taskScope, status: { notIn: TERMINAL_STATUSES } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: { id: true, keyword: true, zone: true, status: true, message: true },
-    }),
-    prisma.batchJob.findMany({
-      where: taskScope,
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      include: { tasks: { select: { status: true, foundCount: true } } },
     }),
     // Actividad propia de hoy — esta sí es siempre "tuya", agente o admin.
     prisma.callActivity.count({
@@ -97,17 +70,9 @@ export default async function Home() {
           </div>
           <div className="flex gap-2">
             <Link
-              href="/scrape"
-              prefetch={false}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-950/40 transition hover:bg-blue-500"
-            >
-              <Radar className="h-4 w-4" strokeWidth={2.25} />
-              Nueva búsqueda
-            </Link>
-            <Link
               href="/businesses"
               prefetch={false}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-700 hover:text-slate-100"
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-950/40 transition hover:bg-blue-500"
             >
               Ver negocios
               <ArrowUpRight className="h-4 w-4" strokeWidth={2.25} />
@@ -129,9 +94,9 @@ export default async function Home() {
           <Kpi label="Tus horas fichadas hoy" value={hoursTodayLabel} icon={Timer} tone="emerald" />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4">
           {/* ── Toca llamar hoy ────────────────────── */}
-          <section className="surface flex flex-col p-5 lg:col-span-3">
+          <section className="surface flex flex-col p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-100">Toca llamar hoy</h2>
               <div className="flex items-center gap-3">
@@ -168,50 +133,6 @@ export default async function Home() {
                   </li>
                 ))}
               </ul>
-            )}
-          </section>
-
-          {/* ── Actividad de scraping ──────────────── */}
-          <section className="surface flex flex-col p-5 lg:col-span-2">
-            <h2 className="mb-3 text-sm font-semibold text-slate-100">Búsquedas recientes</h2>
-            {recentBatches.length === 0 ? (
-              <EmptyRow text="Todavía no has lanzado ninguna búsqueda." />
-            ) : (
-              <ul className="flex flex-col divide-y divide-slate-800/70">
-                {recentBatches.map((batch) => {
-                  const found = batch.tasks.reduce((acc, t) => acc + t.foundCount, 0);
-                  const running = batch.tasks.some((t) => !TERMINAL.has(t.status));
-                  return (
-                    <li key={batch.id} className="flex items-center justify-between gap-3 py-2.5">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-slate-200">
-                          {batch.zones.slice(0, 2).join(", ")}
-                          {batch.zones.length > 2 && ` +${batch.zones.length - 2}`}
-                        </div>
-                        <div className="truncate text-xs text-slate-500">
-                          {batch.keywords.filter(Boolean).join(", ") || "todos los tipos"}
-                        </div>
-                      </div>
-                      <span
-                        className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          running ? "bg-blue-900 text-blue-300" : "bg-emerald-900 text-emerald-300"
-                        }`}
-                      >
-                        {running ? "en curso" : `${found} con contacto`}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {activeTasks.length > 0 && (
-              <Link
-                href="/scrape"
-                prefetch={false}
-                className="mt-4 flex items-center justify-center gap-1.5 rounded-md border border-blue-900 bg-blue-950/50 py-2 text-xs font-medium text-blue-300 hover:bg-blue-950"
-              >
-                {activeTasks.length} tarea(s) en curso — ir a /scrape →
-              </Link>
             )}
           </section>
         </div>

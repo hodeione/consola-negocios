@@ -1,22 +1,11 @@
-import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/api-auth";
 import { redirect } from "next/navigation";
-import { ScrapeConsole } from "@/components/scrape-console";
 
-export default async function ScrapePage() {
-  const user = await requireUser();
-  if (!user) redirect("/login");
-
-  const batchJobs = await prisma.batchJob.findMany({
-    where: user.role === "ADMIN" ? {} : { ownerId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 15,
-    include: { tasks: { orderBy: { createdAt: "asc" } } },
-  });
-
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <ScrapeConsole initialBatchJobs={batchJobs} />
-    </div>
-  );
+// La búsqueda en la nube está retirada de la interfaz: el scraping en
+// Vercel sigue bloqueado por el kill switch (SCRAPING_ENABLED, ver
+// src/lib/scraper/browser.ts) y el flujo real de trabajo es el scraper
+// local (`npm run scrape:local`) + "Importar Excel" en /businesses. Se
+// deja esta redirección en vez de borrar las rutas/API por si se quiere
+// reactivar en el futuro.
+export default function ScrapePage() {
+  redirect("/businesses");
 }

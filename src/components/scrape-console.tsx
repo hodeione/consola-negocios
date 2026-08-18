@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CheckCircle2, FileSpreadsheet, Loader2, Pause, Play, Radar, Search, Tags, Upload, X } from "lucide-react";
+import { ArrowUpRight, Loader2, Pause, Play, Radar, Search, Tags, X } from "lucide-react";
 import type { BatchJob, ScrapeTask } from "@/generated/prisma/client";
 import { queuedFetch } from "@/lib/fetch-queue";
 
@@ -262,8 +262,6 @@ export function ScrapeConsole({ initialBatchJobs }: { initialBatchJobs: BatchJob
           </button>
         </form>
 
-        <ImportExcelPanel />
-
         <div className="surface mt-auto flex items-center justify-between px-3 py-2.5">
           <div className="text-xs text-slate-400">
             {activeCount > 0 ? `${activeCount} tarea(s) en cola/curso` : "Sin tareas pendientes"}
@@ -363,78 +361,6 @@ function TaskRow({ task, onCancel }: { task: ScrapeTask; onCancel: () => void })
         <span>{task.totalCount} lugares</span>
         <span className="text-emerald-500">{task.foundCount} con contacto</span>
       </div>
-    </div>
-  );
-}
-
-function ImportExcelPanel() {
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number; errorCount: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleUpload(e: React.FormEvent) {
-    e.preventDefault();
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    setResult(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await queuedFetch("/api/businesses/import", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
-      setResult(data);
-      setFile(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  return (
-    <div className="surface p-4">
-      <div className="mb-1 flex items-center gap-2">
-        <FileSpreadsheet className="h-3.5 w-3.5 text-slate-500" strokeWidth={2.25} />
-        <h2 className="text-sm font-semibold text-slate-100">Importar Excel</h2>
-      </div>
-      <p className="mb-3 text-xs text-slate-500">
-        Sube un .xlsx generado con el scraper local (mismas columnas que &quot;Exportar
-        Excel&quot;) — se guardan los negocios con contacto, sin duplicar los que ya
-        tengas.
-      </p>
-      <form onSubmit={handleUpload} className="flex flex-col gap-2">
-        <input
-          type="file"
-          accept=".xlsx"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="w-full rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-xs text-slate-300 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-xs file:text-slate-300"
-        />
-        <button
-          type="submit"
-          disabled={!file || uploading}
-          className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-slate-600 disabled:opacity-40"
-        >
-          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} /> : <Upload className="h-3.5 w-3.5" strokeWidth={2.25} />}
-          {uploading ? "Importando…" : "Importar"}
-        </button>
-      </form>
-      {error && (
-        <div className="mt-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          {error}
-        </div>
-      )}
-      {result && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
-          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" strokeWidth={2.25} />
-          <span>
-            {result.imported} negocio(s) importados, {result.skipped} fila(s) omitidas
-            {result.errorCount > 0 && `, ${result.errorCount} con error`}.
-          </span>
-        </div>
-      )}
     </div>
   );
 }
