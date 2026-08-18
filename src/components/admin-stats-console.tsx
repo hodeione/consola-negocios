@@ -19,6 +19,7 @@ import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
 import type { AgentStats } from "@/lib/admin-stats";
 import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
 import { ConversionInsights } from "@/components/conversion-insights";
+import { useToast } from "@/components/toast-provider";
 
 interface TimeEntryRow {
   id: string;
@@ -289,6 +290,7 @@ function AbsenceForm({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showToast = useToast();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -310,6 +312,7 @@ function AbsenceForm({
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Error ${res.status}`);
       onCreated(data);
+      showToast("Registrado");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -486,6 +489,7 @@ function EntryRow({
   const [clockOut, setClockOut] = useState(entry.clockOut ? toLocalInputValue(entry.clockOut) : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const showToast = useToast();
 
   // Solo se calcula para fichajes ya cerrados — uno abierto no tiene una
   // duración estable que mostrar sin re-renderizar cada segundo.
@@ -509,6 +513,7 @@ function EntryRow({
       const updated = await res.json();
       onUpdate({ ...entry, ...updated });
       setEditing(false);
+      showToast("Guardado");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -524,7 +529,10 @@ function EntryRow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clockOut: new Date().toISOString() }),
       });
-      if (res.ok) onUpdate({ ...entry, ...(await res.json()) });
+      if (res.ok) {
+        onUpdate({ ...entry, ...(await res.json()) });
+        showToast("Fichaje cerrado");
+      }
     } finally {
       setBusy(false);
     }

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { auth } from "@/lib/auth";
 import { Nav } from "@/components/nav";
+import { ToastProvider } from "@/components/toast-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,8 +29,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col text-slate-100">
-        {session?.user && <Nav user={session.user} />}
-        <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+        <ToastProvider>
+          {session?.user && <Nav user={session.user} />}
+          <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
+        </ToastProvider>
       </body>
     </html>
   );

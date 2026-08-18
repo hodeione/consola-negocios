@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Building2, LogOut, Radar, Search, Users } from "lucide-react";
+import { BarChart3, Building2, LogOut, PhoneCall, Radar, Search, Users } from "lucide-react";
 import { signOutAction } from "@/lib/actions/auth-actions";
 import { ClockWidget } from "@/components/clock-widget";
 
@@ -10,6 +10,7 @@ export function Nav({ user }: { user: { name: string; email: string; role: strin
   const pathname = usePathname();
 
   const links = [
+    { href: "/call-mode", label: "Llamar", icon: PhoneCall },
     { href: "/businesses", label: "Negocios", icon: Building2 },
     { href: "/scrape", label: "Buscar", icon: Search },
     ...(user.role === "ADMIN"

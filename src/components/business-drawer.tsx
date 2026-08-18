@@ -35,6 +35,7 @@ import {
   TAG_SUGGESTIONS,
 } from "@/lib/businesses/labels";
 import { isValidSpanishPhone } from "@/lib/businesses/phone";
+import { useToast } from "@/components/toast-provider";
 import type { BusinessRow } from "@/components/businesses-console";
 
 interface CallActivityRow {
@@ -78,6 +79,7 @@ export function BusinessDrawer({
   onClose: () => void;
   onUpdated: (b: BusinessRow) => void;
 }) {
+  const showToast = useToast();
   const [business, setBusiness] = useState<BusinessDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,6 +175,7 @@ export function BusinessDrawer({
       const updated = await res.json();
       onUpdated(updated);
       await refetchDetail(); // trae también los AuditLog que el PATCH haya generado
+      showToast("Guardado");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -205,6 +208,7 @@ export function BusinessDrawer({
       if (callSetFollowUp) setNextFollowUpAt(toDateInputValue(updatedBusiness.nextFollowUpAt));
       onUpdated(updatedBusiness);
       setCallNotes("");
+      showToast("Llamada registrada");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -221,6 +225,7 @@ export function BusinessDrawer({
       if (!res.ok) throw new Error(updated?.error || "Error re-scrapeando");
       setBusiness((prev) => (prev ? { ...prev, ...updated } : prev));
       onUpdated(updated);
+      showToast("Ficha actualizada");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -259,6 +264,7 @@ export function BusinessDrawer({
       onUpdated(updated);
       if (next) setFlagNote("");
       await refetchDetail();
+      showToast(next ? "Marcado como incorrecto" : "Desmarcado");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

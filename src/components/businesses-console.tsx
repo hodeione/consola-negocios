@@ -28,6 +28,7 @@ import {
   STATUS_OPTIONS,
 } from "@/lib/businesses/labels";
 import { BusinessDrawer } from "@/components/business-drawer";
+import { useToast } from "@/components/toast-provider";
 import { DuplicatesModal } from "@/components/duplicates-modal";
 
 type AssignedTo = { id: string; name: string } | null;
@@ -121,6 +122,7 @@ export function BusinessesConsole({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
+  const showToast = useToast();
   const [bulkBusy, setBulkBusy] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
 
@@ -202,6 +204,7 @@ export function BusinessesConsole({
 
   async function bulkAction(patch: { status?: string; priority?: string; addTag?: string; assignedToUserId?: string | null }) {
     if (selected.size === 0) return;
+    const count = selected.size;
     setBulkBusy(true);
     try {
       const res = await queuedFetch("/api/businesses/bulk", {
@@ -212,6 +215,7 @@ export function BusinessesConsole({
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || "Error en acción en lote");
       setSelected(new Set());
       await refresh();
+      showToast(`${count} negocio(s) actualizados`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

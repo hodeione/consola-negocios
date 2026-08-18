@@ -16,6 +16,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { queuedFetch } from "@/lib/fetch-queue";
+import { useToast } from "@/components/toast-provider";
 
 interface AdminUser {
   id: string;
@@ -67,6 +68,7 @@ export function AdminUsersConsole({
   const [users, setUsers] = useState<AdminUser[]>(initialUsers);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const showToast = useToast();
 
   function patchUser(updated: AdminUser) {
     setUsers((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
@@ -82,6 +84,9 @@ export function AdminUsersConsole({
       });
       if (!res.ok) throw new Error(await errorMessageFrom(res));
       patchUser(await res.json());
+      if (patch.password) showToast("Contraseña restablecida");
+      else if (patch.role) showToast("Rol actualizado");
+      else if (patch.active !== undefined) showToast(patch.active ? "Cuenta activada" : "Cuenta desactivada");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -250,6 +255,7 @@ function UserRow({
   const [notes, setNotes] = useState<{ id: string; body: string; createdAt: string; author: { name: string } }[] | null>(null);
   const [newNote, setNewNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const showToast = useToast();
 
   async function toggleEvents() {
     if (showEvents) {
@@ -291,6 +297,7 @@ function UserRow({
         const created = await res.json();
         setNotes((prev) => [created, ...(prev ?? [])]);
         setNewNote("");
+        showToast("Nota añadida");
       }
     } finally {
       setSavingNote(false);

@@ -134,9 +134,21 @@ export default async function Home() {
           <section className="surface flex flex-col p-5 lg:col-span-3">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-100">Toca llamar hoy</h2>
-              <Link href="/businesses" prefetch={false} className="text-xs font-medium text-blue-400 hover:text-blue-300">
-                Ver todos →
-              </Link>
+              <div className="flex items-center gap-3">
+                {dueSoon.length > 0 && (
+                  <Link
+                    href="/call-mode"
+                    prefetch={false}
+                    className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-950/40 transition hover:bg-blue-500"
+                  >
+                    <PhoneCall className="h-3.5 w-3.5" strokeWidth={2.25} />
+                    Empezar
+                  </Link>
+                )}
+                <Link href="/businesses" prefetch={false} className="text-xs font-medium text-blue-400 hover:text-blue-300">
+                  Ver todos →
+                </Link>
+              </div>
             </div>
             {dueSoon.length === 0 ? (
               <EmptyRow text="Nada pendiente de llamar por hoy. 🎉" />
