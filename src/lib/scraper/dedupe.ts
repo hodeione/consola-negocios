@@ -12,8 +12,17 @@ export function normalizeWebsite(website: string): string {
   return w;
 }
 
+/**
+ * "+34 923 22 35 49" y "923 22 35 49" son el mismo número, pero sin quitar
+ * el prefijo de país generaban claves distintas y dejaban colar duplicados
+ * (encontrado el 18 ago 2026 al revisar duplicados tras una importación
+ * masiva — 6 negocios reales duplicados solo por esto).
+ */
 function normalizePhoneForKey(phone: string): string {
-  return phone.replace(/\D/g, "");
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("0034")) digits = digits.slice(4);
+  else if (digits.startsWith("34") && digits.length === 11) digits = digits.slice(2);
+  return digits;
 }
 
 function normalizeNameForKey(name: string): string {

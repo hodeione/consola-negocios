@@ -1,6 +1,24 @@
 {
-  "zones": ["Madrid España", "Salamanca España", "Bilbao España", "Barcelona España"],
-  "keywords": ["fontanero", "electricista", "cerrajero", "restaurante", "bar"],
-  "maxResultsPerCombo": 30,
+  "zones": [
+    "Sevilla España",
+    "Zaragoza España",
+    "Oviedo España",
+    "Palma de Mallorca España",
+    "Las Palmas de Gran Canaria España",
+    "Santander España",
+    "Toledo España",
+    "Valladolid España",
+    "Barcelona España",
+    "Badajoz España",
+    "Vigo España",
+    "Logroño España",
+    "Madrid España",
+    "Murcia España",
+    "Pamplona España",
+    "Bilbao España",
+    "Valencia España"
+  ],
+  "keywords": ["restaurante", "clínica dental", "asesoría", "gimnasio", "inmobiliaria"],
+  "maxResultsPerCombo": 25,
   "language": "es"
 }
