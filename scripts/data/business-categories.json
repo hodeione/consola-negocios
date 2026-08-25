@@ -1,0 +1,89 @@
+{
+  "Hostelería y alimentación": [
+    "restaurante",
+    "bar",
+    "cafetería",
+    "pastelería",
+    "panadería",
+    "catering",
+    "heladería"
+  ],
+  "Salud y estética": [
+    "clínica dental",
+    "clínica estética",
+    "fisioterapeuta",
+    "veterinario",
+    "óptica",
+    "psicólogo",
+    "nutricionista",
+    "podólogo",
+    "farmacia"
+  ],
+  "Deporte y belleza": [
+    "gimnasio",
+    "peluquería",
+    "barbería",
+    "centro de estética",
+    "spa",
+    "estudio de yoga"
+  ],
+  "Inmobiliario y construcción": [
+    "inmobiliaria",
+    "arquitecto",
+    "constructora",
+    "reformas"
+  ],
+  "Asesorías y legal": [
+    "asesoría",
+    "gestoría",
+    "seguros",
+    "despacho de abogados",
+    "notaría"
+  ],
+  "Oficios y reparaciones": [
+    "fontanero",
+    "cerrajero",
+    "electricista",
+    "carpintero",
+    "pintor",
+    "persianas",
+    "desatascos",
+    "control de plagas",
+    "jardinería",
+    "techador",
+    "toldos",
+    "cristalero"
+  ],
+  "Comercio y tiendas": [
+    "zapatería",
+    "joyería",
+    "floristería",
+    "librería",
+    "tienda de ropa",
+    "ferretería",
+    "tienda de móviles",
+    "tienda de muebles"
+  ],
+  "Formación": [
+    "academia",
+    "autoescuela",
+    "guardería"
+  ],
+  "Logística e instalaciones": [
+    "mudanzas",
+    "empresa de instalaciones",
+    "alquiler de maquinaria",
+    "transporte"
+  ],
+  "Automoción": [
+    "taller mecánico",
+    "concesionario de coches",
+    "lavado de coches"
+  ],
+  "Ocio y eventos": [
+    "organización de eventos",
+    "fotógrafo",
+    "agencia de viajes",
+    "hotel"
+  ]
+}

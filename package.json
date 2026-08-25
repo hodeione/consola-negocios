@@ -13,7 +13,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "scrape:local": "tsx scripts/local-scrape.ts"
+    "scrape:local": "tsx scripts/local-scrape.ts",
+    "scrape:coverage": "tsx scripts/local-scrape-coverage.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",

@@ -58,5 +58,8 @@ qa-*.xlsx
 negocios-*.xlsx
 negocios-local-*.xlsx
 
+# progreso del scraper de cobertura (estado de esta máquina, no código)
+scripts/local-scrape-coverage-progress.json
+
 .vercel
 .env*
