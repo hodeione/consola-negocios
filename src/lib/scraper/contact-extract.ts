@@ -211,6 +211,17 @@ async function fetchHtml(url: string, timeoutMs = 5000): Promise<string> {
 }
 
 /**
+ * Descarga solo la portada (sin las páginas de contacto candidatas) — para
+ * cuando lo único que hace falta es mirar el HTML (p.ej. calcular la
+ * necesidad digital de un negocio ya guardado, sin volver a sacar
+ * emails/teléfonos). Un único fetch, no cinco.
+ */
+export async function fetchHomePage(website: string): Promise<{ html: string; ok: boolean }> {
+  const html = await fetchHtml(website.replace(/\/+$/, ""));
+  return { html, ok: !!html };
+}
+
+/**
  * Descarga la home + páginas de contacto candidatas en paralelo (timeout 5s
  * cada una) y extrae emails/teléfonos combinados de todas.
  *
