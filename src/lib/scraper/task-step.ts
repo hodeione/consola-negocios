@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { collectPlaceLinksStep, detailPlacesBatch, type PlaceDetails } from "./maps";
 import { fetchContactInfo } from "./contact-extract";
 import { buildDedupeKey } from "./dedupe";
+import { computeDigitalNeed } from "./digital-need";
 import type { ScrapeTask } from "@/generated/prisma/client";
 import type { ScrapeTaskUpdateInput } from "@/generated/prisma/models/ScrapeTask";
 
@@ -72,7 +73,9 @@ async function saveBusinessIfHasContact(
   detail: PlaceDetails,
   task: ScrapeTask,
   emails: string[],
-  webPhones: string[]
+  webPhones: string[],
+  digitalNeedSignals: string[],
+  digitalNeedScore: number
 ): Promise<boolean> {
   const hasContact = !!detail.phone || emails.length > 0 || webPhones.length > 0;
   if (!detail.name || !hasContact) return false;
@@ -86,6 +89,8 @@ async function saveBusinessIfHasContact(
       ...fields,
       emails,
       webPhones,
+      digitalNeedSignals,
+      digitalNeedScore,
       dedupeKey,
       ownerId: task.ownerId,
       assignedToUserId: task.ownerId,
@@ -99,6 +104,8 @@ async function saveBusinessIfHasContact(
       ...fields,
       emails,
       webPhones,
+      digitalNeedSignals,
+      digitalNeedScore,
       sourceTaskId: task.id,
       lastVerifiedAt: new Date(),
     },
@@ -172,10 +179,11 @@ async function runEnriching(task: ScrapeTask): Promise<TaskPatch> {
   let savedThisBatch = 0;
   await Promise.all(
     batch.map(async (detail) => {
-      const { emails, webPhones } = detail.website
+      const { emails, webPhones, homeHtml, homeFetchOk } = detail.website
         ? await fetchContactInfo(detail.website)
-        : { emails: [], webPhones: [] };
-      const saved = await saveBusinessIfHasContact(detail, task, emails, webPhones);
+        : { emails: [], webPhones: [], homeHtml: "", homeFetchOk: false };
+      const { signals, score } = computeDigitalNeed({ website: detail.website, homeHtml, homeFetchOk });
+      const saved = await saveBusinessIfHasContact(detail, task, emails, webPhones, signals, score);
       if (saved) savedThisBatch++;
     })
   );

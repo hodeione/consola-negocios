@@ -213,10 +213,15 @@ async function fetchHtml(url: string, timeoutMs = 5000): Promise<string> {
 /**
  * Descarga la home + páginas de contacto candidatas en paralelo (timeout 5s
  * cada una) y extrae emails/teléfonos combinados de todas.
+ *
+ * También devuelve `homeHtml`/`homeFetchOk` (el resultado de descargar solo
+ * la portada, sin las páginas de contacto) — no cuesta una petición extra,
+ * ya la hacíamos, y sirve para calcular si la web está caída/es antigua
+ * (ver src/lib/scraper/digital-need.ts) sin duplicar el fetch.
  */
 export async function fetchContactInfo(
   website: string
-): Promise<{ emails: string[]; webPhones: string[] }> {
+): Promise<{ emails: string[]; webPhones: string[]; homeHtml: string; homeFetchOk: boolean }> {
   const base = website.replace(/\/+$/, "");
   const candidates = [
     base,
@@ -228,6 +233,7 @@ export async function fetchContactInfo(
   ];
 
   const pages = await Promise.all(candidates.map((u) => fetchHtml(u)));
+  const [homeHtml] = pages;
 
   const emails = new Set<string>();
   const webPhones = new Set<string>();
@@ -237,5 +243,5 @@ export async function fetchContactInfo(
     for (const p of parsePhonesDeep(html)) webPhones.add(p);
   }
 
-  return { emails: [...emails], webPhones: [...webPhones] };
+  return { emails: [...emails], webPhones: [...webPhones], homeHtml, homeFetchOk: !!homeHtml };
 }

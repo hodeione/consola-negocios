@@ -19,6 +19,12 @@
  *   - batchSize: cuántas combinaciones hacer en esta ejecución (0 = todas
  *     las que falten, sin parar — como el script manual).
  *   - maxResultsPerCombo / language: igual que en el script manual.
+ *   - minDigitalNeedScore (0-100, 0 = desactivado): si se pone por encima
+ *     de 0, descarta directamente los negocios que no llegan a esa
+ *     puntuación de "necesita algo digital" (sin web, web caída, sin SSL,
+ *     no responsive, web = solo un enlace a Facebook/Instagram — ver
+ *     src/lib/scraper/digital-need.ts). Con 40 ya solo se guardan los que
+ *     tienen al menos una señal fuerte.
  */
 import fs from "fs";
 import path from "path";
@@ -53,10 +59,11 @@ function comboKey(zone: string, keyword: string): string {
 }
 
 async function main() {
-  const { batchSize, maxResultsPerCombo, language } = coverageConfig as {
+  const { batchSize, maxResultsPerCombo, language, minDigitalNeedScore } = coverageConfig as {
     batchSize: number;
     maxResultsPerCombo: number;
     language: string;
+    minDigitalNeedScore?: number;
   };
 
   // Todas las categorías, en el mismo orden que en el fichero (agrupadas por
@@ -94,7 +101,7 @@ async function main() {
     const { zone, keyword } = batch[i];
     console.log(`[${i + 1}/${batch.length}] ${keyword} — ${zone}`);
     try {
-      const rows = await scrapeCombo(zone, keyword, language, maxResultsPerCombo);
+      const rows = await scrapeCombo(zone, keyword, language, maxResultsPerCombo, minDigitalNeedScore ?? 0);
       for (const row of rows) byDedupeKey.set(row.dedupeKey, row);
       progress.done[comboKey(zone, keyword)] = rows.length;
       console.log(`  → ${rows.length} negocios con contacto (${byDedupeKey.size} en esta tanda)\n`);

@@ -20,5 +20,6 @@
   ],
   "keywords": ["restaurante", "clínica dental", "asesoría", "gimnasio", "inmobiliaria"],
   "maxResultsPerCombo": 25,
-  "language": "es"
+  "language": "es",
+  "minDigitalNeedScore": 0
 }

@@ -9,6 +9,7 @@ import ExcelJS from "exceljs";
 import { collectPlaceLinksStep, detailPlacesBatch, type PlaceDetails } from "../../src/lib/scraper/maps";
 import { fetchContactInfo } from "../../src/lib/scraper/contact-extract";
 import { buildDedupeKey } from "../../src/lib/scraper/dedupe";
+import { computeDigitalNeed } from "../../src/lib/scraper/digital-need";
 
 export interface Row {
   name: string;
@@ -23,15 +24,21 @@ export interface Row {
   category: string;
   dedupeKey: string;
   mapsUrl: string;
+  digitalNeedSignals: string[];
+  digitalNeedScore: number;
 }
 
+// Las columnas de venta (19-21) y las de necesidad digital (23-24) van al
+// final a propósito — /api/businesses/import lee por índice de columna fijo,
+// así que añadir aquí en medio rompería ficheros ya generados.
 export const HEADERS = [
   "Nombre", "Zona", "Keyword", "Dirección", "Tel. Maps", "Web", "Emails",
   "Tel. Web", "Rating", "Categoría", "Estado", "Prioridad", "Contacto",
   "Cargo", "Etiquetas", "Próxima llamada", "Último contacto", "Asignado a",
   "Producto", "Importe", "Fecha de cierre", "Maps URL",
+  "Señales digitales", "Puntuación digital",
 ];
-export const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16, 34];
+export const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16, 34, 26, 12];
 
 export function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -68,12 +75,15 @@ export async function detailAllPlaces(links: string[], language: string): Promis
   return details;
 }
 
+const EMPTY_CONTACT = { emails: [], webPhones: [], homeHtml: "", homeFetchOk: false };
+
 export async function enrichAndFilter(details: PlaceDetails[], zone: string, keyword: string): Promise<Row[]> {
   const rows: Row[] = [];
   for (const d of details) {
-    const { emails, webPhones } = d.website ? await fetchContactInfo(d.website) : { emails: [], webPhones: [] };
+    const { emails, webPhones, homeHtml, homeFetchOk } = d.website ? await fetchContactInfo(d.website) : EMPTY_CONTACT;
     const hasContact = !!d.phone || emails.length > 0 || webPhones.length > 0;
     if (!d.name || !hasContact) continue;
+    const { signals, score } = computeDigitalNeed({ website: d.website, homeHtml, homeFetchOk });
     rows.push({
       name: d.name,
       zone,
@@ -87,16 +97,31 @@ export async function enrichAndFilter(details: PlaceDetails[], zone: string, key
       category: d.category,
       dedupeKey: buildDedupeKey({ website: d.website, phone: d.phone, name: d.name }),
       mapsUrl: d.sourceUrl,
+      digitalNeedSignals: signals,
+      digitalNeedScore: score,
     });
   }
   return rows;
 }
 
-/** Una combinación zona×keyword completa: recoge, detalla y enriquece. */
-export async function scrapeCombo(zone: string, keyword: string, language: string, maxResults: number): Promise<Row[]> {
+/**
+ * Una combinación zona×keyword completa: recoge, detalla y enriquece.
+ * `minDigitalNeedScore` (0 = sin filtrar) descarta directamente los
+ * negocios que no llegan a esa puntuación de "necesita algo digital" —
+ * para cuando se quiere que el scraper solo guarde candidatos casi seguros,
+ * no solo puntuarlos y dejar que el agente los filtre después.
+ */
+export async function scrapeCombo(
+  zone: string,
+  keyword: string,
+  language: string,
+  maxResults: number,
+  minDigitalNeedScore = 0
+): Promise<Row[]> {
   const links = await collectAllLinks(keyword, zone, language, maxResults);
   const details = await detailAllPlaces(links, language);
-  return enrichAndFilter(details, zone, keyword);
+  const rows = await enrichAndFilter(details, zone, keyword);
+  return minDigitalNeedScore > 0 ? rows.filter((r) => r.digitalNeedScore >= minDigitalNeedScore) : rows;
 }
 
 export async function writeXlsx(rows: Row[], filename: string) {
@@ -117,6 +142,8 @@ export async function writeXlsx(rows: Row[], filename: string) {
       r.emails.join("; "), r.webPhones.join("; "), r.rating || "", r.category,
       "", "", "", "", "", "", "", "", "", "", "", // Estado/Prioridad/Contacto/.../Venta — se rellenan al importar o al gestionar
       r.mapsUrl,
+      r.digitalNeedSignals.join(", "),
+      r.digitalNeedScore || "",
     ]);
     const fill: ExcelJS.Fill = {
       type: "pattern", pattern: "solid",

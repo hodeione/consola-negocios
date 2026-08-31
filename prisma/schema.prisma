@@ -217,6 +217,14 @@ model Business {
   flaggedIncorrect    Boolean  @default(false)
   flaggedIncorrectNote String  @default("")
 
+  // "¿Necesita un servicio digital?" — calculado al scrapear/re-scrapear a
+  // partir de si tiene web, si esa "web" es en realidad solo un enlace a
+  // Facebook/Instagram, si responde, si tiene SSL y si es responsive (ver
+  // src/lib/scraper/digital-need.ts). No sustituye el criterio del agente,
+  // solo ayuda a priorizar a quién llamar primero.
+  digitalNeedSignals String[] @default([])
+  digitalNeedScore   Int      @default(0)
+
   // Gestión / CRM
   status         CallStatus @default(PENDING)
   priority       Priority   @default(MEDIUM)
@@ -255,6 +263,7 @@ model Business {
   @@index([assignedToUserId, status])
   @@index([ownerId, nextFollowUpAt])
   @@index([zone])
+  @@index([ownerId, digitalNeedScore])
   @@map("businesses")
 }
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 import { detailPlacesBatch } from "@/lib/scraper/maps";
 import { fetchContactInfo } from "@/lib/scraper/contact-extract";
+import { computeDigitalNeed } from "@/lib/scraper/digital-need";
 
 function canAccess(business: { assignedToUserId: string | null; ownerId: string }, user: { id: string; role: string }) {
   if (user.role === "ADMIN") return true;
@@ -51,7 +52,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "No se pudo leer la ficha (puede que ya no esté disponible en Maps)" }, { status: 502 });
   }
 
-  const { emails, webPhones } = detail.website ? await fetchContactInfo(detail.website) : { emails: [], webPhones: [] };
+  const { emails, webPhones, homeHtml, homeFetchOk } = detail.website
+    ? await fetchContactInfo(detail.website)
+    : { emails: [], webPhones: [], homeHtml: "", homeFetchOk: false };
+  const { signals, score } = computeDigitalNeed({ website: detail.website, homeHtml, homeFetchOk });
 
   const updated = await prisma.business.update({
     where: { id },
@@ -65,6 +69,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       category: detail.category,
       emails,
       webPhones,
+      digitalNeedSignals: signals,
+      digitalNeedScore: score,
       lastVerifiedAt: new Date(),
     },
     include: { assignedTo: { select: { id: true, name: true } } },

@@ -51,8 +51,10 @@ const HEADERS = [
   "Importe",
   "Fecha de cierre",
   "Maps URL",
+  "Señales digitales",
+  "Puntuación digital",
 ];
-const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16, 34];
+const COL_WIDTHS = [28, 18, 16, 40, 16, 34, 40, 24, 8, 20, 16, 10, 20, 18, 22, 16, 16, 18, 16, 12, 16, 34, 26, 12];
 
 export async function GET(request: NextRequest) {
   const user = await requireUser();
@@ -110,6 +112,8 @@ export async function GET(request: NextRequest) {
       b.dealValue || "",
       b.closedAt ? b.closedAt.toISOString().slice(0, 10) : "",
       b.mapsUrl,
+      b.digitalNeedSignals.join(", "),
+      b.digitalNeedScore || "",
     ]);
     const fill: ExcelJS.Fill = {
       type: "pattern",

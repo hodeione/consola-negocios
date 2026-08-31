@@ -25,6 +25,8 @@ export interface BusinessFilters {
   // Solo negocios cuyo lastVerifiedAt sea anterior a esta fecha — "datos desactualizados".
   staleBefore?: Date;
   maxRating?: number;
+  // Solo negocios con digitalNeedScore >= este umbral — "necesita algo digital de verdad".
+  minDigitalNeed?: number;
 }
 
 function parseCsv<T extends string>(value: string | null, allowed: readonly T[]): T[] | undefined {
@@ -40,6 +42,8 @@ export function parseBusinessFilters(searchParams: URLSearchParams): BusinessFil
   const staleBefore = staleBeforeRaw ? new Date(staleBeforeRaw) : undefined;
   const maxRatingRaw = searchParams.get("maxRating");
   const maxRating = maxRatingRaw ? Number(maxRatingRaw) : undefined;
+  const minDigitalNeedRaw = searchParams.get("minDigitalNeed");
+  const minDigitalNeed = minDigitalNeedRaw ? Number(minDigitalNeedRaw) : undefined;
 
   return {
     status: parseCsv(searchParams.get("status"), CALL_STATUSES),
@@ -53,6 +57,7 @@ export function parseBusinessFilters(searchParams: URLSearchParams): BusinessFil
     batchJobId: searchParams.get("batchJobId")?.trim() || undefined,
     staleBefore: staleBefore && !isNaN(staleBefore.getTime()) ? staleBefore : undefined,
     maxRating: maxRating !== undefined && !isNaN(maxRating) ? maxRating : undefined,
+    minDigitalNeed: minDigitalNeed !== undefined && !isNaN(minDigitalNeed) ? minDigitalNeed : undefined,
   };
 }
 
@@ -88,6 +93,7 @@ export function buildBusinessWhere(
   // rating > 0 a propósito: 0 significa "sin dato de rating", no "0 estrellas"
   // — no tiene sentido mezclarlo con negocios que de verdad puntúan bajo.
   if (filters.maxRating !== undefined) where.rating = { gt: 0, lte: filters.maxRating };
+  if (filters.minDigitalNeed !== undefined) where.digitalNeedScore = { gte: filters.minDigitalNeed };
 
   if (filters.search) {
     where.OR = [

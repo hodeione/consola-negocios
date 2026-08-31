@@ -1,5 +1,6 @@
 {
   "batchSize": 30,
   "maxResultsPerCombo": 25,
-  "language": "es"
+  "language": "es",
+  "minDigitalNeedScore": 0
 }

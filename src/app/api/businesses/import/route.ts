@@ -50,6 +50,8 @@ const COL = {
   dealValue: 20,
   closedAt: 21,
   mapsUrl: 22,
+  digitalNeedSignals: 23,
+  digitalNeedScore: 24,
 };
 
 function cellText(cell: ExcelJS.Cell): string {
@@ -134,6 +136,8 @@ export async function POST(request: Request) {
     const dealValue = parseFloat(dealValueRaw) || 0;
     const closedAtRaw = cellText(row.getCell(COL.closedAt));
     const closedAt = closedAtRaw && !isNaN(Date.parse(closedAtRaw)) ? new Date(closedAtRaw) : undefined;
+    const digitalNeedSignals = splitList(cellText(row.getCell(COL.digitalNeedSignals)));
+    const digitalNeedScore = parseInt(cellText(row.getCell(COL.digitalNeedScore)), 10) || 0;
 
     const dedupeKey = buildDedupeKey({ website, phone: mapsPhone, name });
     const fields = {
@@ -148,6 +152,8 @@ export async function POST(request: Request) {
       webPhones,
       rating,
       category: cellText(row.getCell(COL.category)),
+      digitalNeedSignals,
+      digitalNeedScore,
     };
 
     try {

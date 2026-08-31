@@ -34,6 +34,7 @@ import { useToast } from "@/components/toast-provider";
 import { DuplicatesModal } from "@/components/duplicates-modal";
 import { ImportExcelModal } from "@/components/import-excel-modal";
 import { AssignByFilterModal } from "@/components/assign-by-filter-modal";
+import { DigitalNeedBadge } from "@/components/digital-need-badge";
 
 type AssignedTo = { id: string; name: string } | null;
 export type BusinessRow = Business & { assignedTo: AssignedTo };
@@ -51,6 +52,7 @@ interface Filters {
   staleOnly: boolean;
   forgottenOnly: boolean;
   maxRating: string; // "" | "3" | "3.5" | "4" — string para encajar en <select>
+  minDigitalNeed: string; // "" | "40" | "70" — string para encajar en <select>
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -65,6 +67,7 @@ const EMPTY_FILTERS: Filters = {
   staleOnly: false,
   forgottenOnly: false,
   maxRating: "",
+  minDigitalNeed: "",
 };
 
 const STALE_DAYS = 90;
@@ -86,6 +89,7 @@ function buildQuery(filters: Filters, page: number, pageSize: number, sortBy: st
   }
   if (filters.forgottenOnly) sp.set("forgottenOnly", "true");
   if (filters.maxRating) sp.set("maxRating", filters.maxRating);
+  if (filters.minDigitalNeed) sp.set("minDigitalNeed", filters.minDigitalNeed);
   sp.set("page", String(page));
   sp.set("pageSize", String(pageSize));
   sp.set("sortBy", sortBy);
@@ -256,6 +260,7 @@ export function BusinessesConsole({
     filters.staleOnly ||
     filters.forgottenOnly ||
     filters.maxRating ||
+    filters.minDigitalNeed ||
     searchInput;
 
   return (
@@ -380,6 +385,16 @@ export function BusinessesConsole({
           <option value="3">≤ 3★</option>
           <option value="3.5">≤ 3.5★</option>
           <option value="4">≤ 4★</option>
+        </select>
+        <select
+          value={filters.minDigitalNeed}
+          onChange={(e) => updateFilter("minDigitalNeed", e.target.value)}
+          title="Sin web, web caída, sin SSL, no responsive o web que en realidad es solo un enlace a redes sociales"
+          className="rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-blue-500"
+        >
+          <option value="">Necesidad digital: cualquiera</option>
+          <option value="40">Alta (≥40) — sin web o web = red social</option>
+          <option value="1">Cualquier señal detectada</option>
         </select>
 
         <div className="flex gap-1">
@@ -554,6 +569,13 @@ export function BusinessesConsole({
                   sortDir={sortDir}
                   onClick={toggleSort}
                 />
+                <SortableTh
+                  label="Necesidad"
+                  col="digitalNeedScore"
+                  sortBy={sortBy}
+                  sortDir={sortDir}
+                  onClick={toggleSort}
+                />
                 {isAdmin && <th className="px-3 py-2.5">Asignado</th>}
               </tr>
             </thead>
@@ -604,6 +626,9 @@ export function BusinessesConsole({
                   </td>
                   <td className="px-3 py-2.5 text-xs text-slate-400">
                     {b.nextFollowUpAt ? new Date(b.nextFollowUpAt).toLocaleDateString("es-ES") : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <DigitalNeedBadge score={b.digitalNeedScore} signals={b.digitalNeedSignals} />
                   </td>
                   {isAdmin && (
                     <td className="px-3 py-2.5">

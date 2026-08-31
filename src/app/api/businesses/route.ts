@@ -14,6 +14,7 @@ const SORTABLE = new Set([
   "nextFollowUpAt",
   "lastCalledAt",
   "rating",
+  "digitalNeedScore",
 ]);
 
 export async function GET(request: NextRequest) {

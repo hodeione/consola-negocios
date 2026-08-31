@@ -35,6 +35,7 @@ import {
   TAG_SUGGESTIONS,
 } from "@/lib/businesses/labels";
 import { isValidSpanishPhone } from "@/lib/businesses/phone";
+import { DigitalNeedBadge } from "@/components/digital-need-badge";
 import { useToast } from "@/components/toast-provider";
 import type { BusinessRow } from "@/components/businesses-console";
 
@@ -350,6 +351,10 @@ export function BusinessDrawer({
                 <dt className="text-slate-500">Zona / tipo</dt>
                 <dd className="text-slate-300">
                   {business.zone} · {business.keyword || business.category || "—"}
+                </dd>
+                <dt className="text-slate-500">Necesidad digital</dt>
+                <dd>
+                  <DigitalNeedBadge score={business.digitalNeedScore} signals={business.digitalNeedSignals} />
                 </dd>
                 <dt className="text-slate-500">Tel. Maps</dt>
                 <dd className="flex items-center gap-1.5 text-slate-300">

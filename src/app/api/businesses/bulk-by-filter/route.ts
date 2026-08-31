@@ -17,7 +17,7 @@ const CALL_STATUS = [
   "INVALID_NUMBER",
 ] as const;
 const PRIORITY = ["LOW", "MEDIUM", "HIGH"] as const;
-const SORTABLE = new Set(["createdAt", "updatedAt", "name", "zone", "status", "priority", "nextFollowUpAt", "lastCalledAt", "rating"]);
+const SORTABLE = new Set(["createdAt", "updatedAt", "name", "zone", "status", "priority", "nextFollowUpAt", "lastCalledAt", "rating", "digitalNeedScore"]);
 
 // Límite duro de seguridad: aunque no se pida `limit`, nunca tocamos más de
 // esto en una sola llamada — evita que un filtro demasiado amplio (o vacío)
@@ -70,7 +70,8 @@ export async function POST(request: NextRequest) {
     !!filters.search ||
     !!filters.dueBefore ||
     !!filters.staleBefore ||
-    filters.maxRating !== undefined;
+    filters.maxRating !== undefined ||
+    filters.minDigitalNeed !== undefined;
   if (!hasRealFilter) {
     return NextResponse.json({ error: "Selecciona al menos un filtro antes de aplicar a todos" }, { status: 400 });
   }

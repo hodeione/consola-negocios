@@ -15,11 +15,12 @@ import { sleep, scrapeCombo, writeXlsx, type Row } from "./lib/scrape-helpers";
 import config from "./local-scrape.config.json";
 
 async function main() {
-  const { zones, keywords, maxResultsPerCombo, language } = config as {
+  const { zones, keywords, maxResultsPerCombo, language, minDigitalNeedScore } = config as {
     zones: string[];
     keywords: string[];
     maxResultsPerCombo: number;
     language: string;
+    minDigitalNeedScore?: number;
   };
 
   if (zones.length === 0) {
@@ -37,7 +38,7 @@ async function main() {
     const { zone, keyword } = combos[i];
     console.log(`[${i + 1}/${combos.length}] ${keyword || "(todos)"} — ${zone}`);
     try {
-      const rows = await scrapeCombo(zone, keyword, language, maxResultsPerCombo);
+      const rows = await scrapeCombo(zone, keyword, language, maxResultsPerCombo, minDigitalNeedScore ?? 0);
       for (const row of rows) byDedupeKey.set(row.dedupeKey, row); // dedupe igual que la app
       console.log(`  → ${rows.length} negocios con contacto (${byDedupeKey.size} acumulados en total)\n`);
     } catch (err) {
