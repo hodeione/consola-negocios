@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import type { CallStatus } from "@/generated/prisma/enums";
+import { endOfDayMadrid, endOfTodayMadrid, madridDayKey, startOfDayMadrid, ymdMinusDays } from "@/lib/timezone";
 
 export interface AgentStats {
   id: string;
@@ -26,8 +27,7 @@ export interface AgentStats {
  */
 async function getAgentStatsUncached(from: Date, to: Date): Promise<AgentStats[]> {
   const now = new Date();
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
+  const endOfToday = endOfTodayMadrid();
 
   const users = await prisma.user.findMany({
     orderBy: { name: "asc" },
@@ -131,13 +131,12 @@ export async function getAgentStats(from: Date, to: Date): Promise<AgentStats[]>
   return getAgentStatsCached(from.toISOString(), to.toISOString());
 }
 
-/** Rango [hace `days-1` días a las 00:00, hoy a las 23:59:59]. */
+/** Rango [hace `days-1` días a las 00:00, hoy a las 23:59:59] — en hora de
+ * España, no en la del servidor. */
 export function defaultRange(days: number): { from: Date; to: Date } {
-  const to = new Date();
-  to.setHours(23, 59, 59, 999);
-  const from = new Date();
-  from.setDate(from.getDate() - (days - 1));
-  from.setHours(0, 0, 0, 0);
+  const todayYmd = madridDayKey(new Date());
+  const to = endOfDayMadrid(todayYmd);
+  const from = startOfDayMadrid(ymdMinusDays(todayYmd, days - 1));
   return { from, to };
 }
 
@@ -173,9 +172,10 @@ export interface AgentDetail {
   idleThresholdMinutes: number;
 }
 
-function dayKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+// Y-M-D en hora de España, no en UTC — si no, un fichaje/llamada de última
+// hora de la noche (que en Madrid ya es "mañana" pero en UTC todavía no) se
+// contaría en el día equivocado en las gráficas por día.
+const dayKey = madridDayKey;
 
 /**
  * Serie diaria (horas fichadas/activas/inactivas y llamadas) + huecos de
@@ -233,10 +233,8 @@ export async function getAgentDetail(userId: string, from: Date, to: Date): Prom
     let cursor = segStart;
     while (cursor < segEnd) {
       const cursorDate = new Date(cursor);
-      const dayEnd = new Date(cursorDate);
-      dayEnd.setHours(23, 59, 59, 999);
-      const chunkEnd = Math.min(dayEnd.getTime(), segEnd);
       const key = dayKey(cursorDate);
+      const chunkEnd = Math.min(endOfDayMadrid(key).getTime(), segEnd);
       clockedByDay.set(key, (clockedByDay.get(key) ?? 0) + (chunkEnd - cursor) / 60_000);
       cursor = chunkEnd + 1;
     }

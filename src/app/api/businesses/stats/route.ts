@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
+import { endOfTodayMadrid } from "@/lib/timezone";
 
 export async function GET() {
   const user = await requireUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const scopeWhere = user.role === "ADMIN" ? {} : { assignedToUserId: user.id };
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
+  const endOfToday = endOfTodayMadrid();
 
   const [total, byStatusRaw, dueToday, keywordsRaw] = await Promise.all([
     prisma.business.count({ where: scopeWhere }),

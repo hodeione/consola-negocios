@@ -3,14 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 import { buildBusinessWhere } from "@/lib/businesses/filters";
 import { CallModeConsole } from "@/components/call-mode-console";
+import { endOfTodayMadrid } from "@/lib/timezone";
 
 export default async function CallModePage() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
   const where = buildBusinessWhere({}, user);
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
+  const endOfToday = endOfTodayMadrid();
 
   // Misma cola que "Toca llamar hoy" del dashboard, pero sin el tope de 5 y
   // con todos los campos que hacen falta para ver la ficha entera sin tener

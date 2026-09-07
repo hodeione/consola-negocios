@@ -6,16 +6,15 @@ import { requireUser } from "@/lib/api-auth";
 import { buildBusinessWhere } from "@/lib/businesses/filters";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
 import { fmtHMS } from "@/lib/format";
+import { endOfTodayMadrid, startOfTodayMadrid } from "@/lib/timezone";
 
 export default async function Home() {
   const user = await requireUser();
   if (!user) redirect("/login");
 
   const where = buildBusinessWhere({}, user);
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const endOfToday = endOfTodayMadrid();
+  const startOfToday = startOfTodayMadrid();
 
   const [total, byStatusRaw, dueSoon, callsToday, todaysEntries] = await Promise.all([
     prisma.business.count({ where }),

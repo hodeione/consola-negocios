@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, emailShell } from "@/lib/email";
+import { endOfTodayMadrid } from "@/lib/timezone";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -30,8 +31,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const endOfToday = new Date();
-  endOfToday.setHours(23, 59, 59, 999);
+  const endOfToday = endOfTodayMadrid();
 
   const users = await prisma.user.findMany({
     where: { active: true },
