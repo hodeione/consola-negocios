@@ -37,6 +37,7 @@ import {
 import { isValidSpanishPhone } from "@/lib/businesses/phone";
 import { DigitalNeedBadge } from "@/components/digital-need-badge";
 import { useToast } from "@/components/toast-provider";
+import { fmtDateEs, fmtDateTimeEs } from "@/lib/format";
 import type { BusinessRow } from "@/components/businesses-console";
 
 interface CallActivityRow {
@@ -427,7 +428,7 @@ export function BusinessDrawer({
                 <dt className="text-slate-500">Verificado</dt>
                 <dd className="flex items-center gap-1.5 text-slate-300">
                   {business.lastVerifiedAt
-                    ? new Date(business.lastVerifiedAt).toLocaleDateString("es-ES")
+                    ? fmtDateEs(business.lastVerifiedAt as unknown as string)
                     : "—"}
                   {business.lastVerifiedAt && daysSince(business.lastVerifiedAt as unknown as string) > STALE_DAYS && (
                     <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/20">
@@ -739,7 +740,7 @@ export function BusinessDrawer({
                               {STATUS_LABEL[entry.data.outcome]}
                             </span>
                             <span className="text-slate-500">
-                              {entry.data.user.name} · {new Date(entry.data.createdAt).toLocaleString("es-ES")}
+                              {entry.data.user.name} · {fmtDateTimeEs(entry.data.createdAt)}
                             </span>
                           </div>
                           {entry.data.notes && <p className="text-slate-300">{entry.data.notes}</p>}
@@ -750,7 +751,7 @@ export function BusinessDrawer({
                           <span className="text-slate-400">{AUDIT_ACTION_LABEL[entry.data.action] ?? entry.data.action}</span>
                           <span>· {entry.data.detail}</span>
                           <span className="ml-auto flex-shrink-0">
-                            {entry.data.user.name} · {new Date(entry.data.createdAt).toLocaleString("es-ES")}
+                            {entry.data.user.name} · {fmtDateTimeEs(entry.data.createdAt)}
                           </span>
                         </li>
                       )

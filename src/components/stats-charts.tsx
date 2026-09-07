@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { fmtHMS } from "@/lib/format";
+import { fmtDateEs, fmtHMS } from "@/lib/format";
 
 // Paleta validada (node scripts/validate_palette.js, modo dark): las dos
 // series de la gráfica apilada (activo/inactivo) pasan CVD con el hueco de
@@ -17,8 +17,9 @@ export const CHART_COLORS = {
 export { fmtHMS };
 
 function fmtDayLabel(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+  // Mediodía UTC, no medianoche: `iso` ya es el día en hora de España — a
+  // mediodía ningún huso horario cercano lo desplaza al día de al lado.
+  return fmtDateEs(`${iso}T12:00:00Z`, { day: "2-digit", month: "2-digit" });
 }
 
 const CHART_HEIGHT = 120;

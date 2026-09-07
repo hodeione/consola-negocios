@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/api-auth";
 import { buildBusinessWhere } from "@/lib/businesses/filters";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
-import { fmtHMS } from "@/lib/format";
+import { fmtDateEs, fmtHMS } from "@/lib/format";
 import { endOfTodayMadrid, startOfTodayMadrid } from "@/lib/timezone";
 
 export default async function Home() {
@@ -50,7 +50,7 @@ export default async function Home() {
 
   const byStatus = Object.fromEntries(byStatusRaw.map((s) => [s.status, s._count._all]));
   const firstName = user.name.split(" ")[0];
-  const today = new Date().toLocaleDateString("es-ES", {
+  const today = fmtDateEs(new Date(), {
     weekday: "long",
     day: "numeric",
     month: "long",

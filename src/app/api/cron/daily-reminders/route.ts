@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, emailShell } from "@/lib/email";
 import { endOfTodayMadrid } from "@/lib/timezone";
+import { fmtDateTimeEs } from "@/lib/format";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -115,7 +116,7 @@ async function notifyForgottenClockIns(): Promise<number> {
       const hours = Math.round((Date.now() - e.clockIn.getTime()) / 3_600_000);
       return `<tr>
         <td style="padding:6px 0; color:#e8edf4; font-size:13px;">${e.user.name}</td>
-        <td style="padding:6px 0; color:#93a3b8; font-size:12px;">desde ${e.clockIn.toLocaleString("es-ES")} (${hours}h)</td>
+        <td style="padding:6px 0; color:#93a3b8; font-size:12px;">desde ${fmtDateTimeEs(e.clockIn)} (${hours}h)</td>
       </tr>`;
     })
     .join("");

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
+import { fmtDateTimeEs } from "@/lib/format";
 
 const TYPE_LABEL: Record<string, string> = { WORK: "Trabajo", VACATION: "Vacaciones", ABSENCE: "Ausencia" };
 
@@ -40,8 +41,8 @@ export async function GET(request: NextRequest) {
       e.user.name,
       e.user.email,
       TYPE_LABEL[e.type] ?? e.type,
-      e.clockIn.toLocaleString("es-ES"),
-      e.clockOut ? e.clockOut.toLocaleString("es-ES") : "(abierto)",
+      fmtDateTimeEs(e.clockIn),
+      e.clockOut ? fmtDateTimeEs(e.clockOut) : "(abierto)",
       e.clockOut ? Math.round(hours * 100) / 100 : "",
       e.note,
       e.editedByAdmin ? "Sí" : "",

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { queuedFetch } from "@/lib/fetch-queue";
 import { STATUS_BADGE, STATUS_LABEL } from "@/lib/businesses/labels";
+import { fmtDateEs, fmtDateTimeEs } from "@/lib/format";
 import type { AgentStats } from "@/lib/admin-stats";
 import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
 import { ConversionInsights } from "@/components/conversion-insights";
@@ -173,7 +174,7 @@ export function AdminStatsConsole({
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center gap-3">
             <span>
-              Rango: {new Date(range.from).toLocaleDateString("es-ES")} — {new Date(range.to).toLocaleDateString("es-ES")}
+              Rango: {fmtDateEs(range.from)} — {fmtDateEs(range.to)}
             </span>
             <label className="flex items-center gap-1.5">
               Ordenar por
@@ -584,10 +585,10 @@ function EntryRow({
       <div className="flex min-w-0 items-center gap-3">
         <span className="w-32 flex-shrink-0 truncate text-xs font-medium text-slate-300">{entry.user.name}</span>
         <span className="font-mono text-xs text-slate-500 tabular-nums">
-          {new Date(entry.clockIn).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+          {fmtDateTimeEs(entry.clockIn, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
           {" → "}
           {entry.clockOut
-            ? new Date(entry.clockOut).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+            ? fmtDateTimeEs(entry.clockOut, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
             : "—"}
         </span>
         {!entry.clockOut && (

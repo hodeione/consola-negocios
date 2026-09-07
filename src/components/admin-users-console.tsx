@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { queuedFetch } from "@/lib/fetch-queue";
 import { useToast } from "@/components/toast-provider";
+import { fmtDateEs, fmtDateTimeEs } from "@/lib/format";
 
 interface AdminUser {
   id: string;
@@ -172,7 +173,7 @@ function HealthPanel({ health }: { health: SystemHealth }) {
         <HealthTile
           icon={Radar}
           label="Última búsqueda"
-          value={health.lastTask ? new Date(health.lastTask.updatedAt).toLocaleDateString("es-ES") : "nunca"}
+          value={health.lastTask ? fmtDateEs(health.lastTask.updatedAt) : "nunca"}
           hint={health.lastTask?.label}
         />
         <HealthTile
@@ -408,7 +409,7 @@ function UserRow({
               {events.map((e) => (
                 <li key={e.id} className="flex items-center gap-3">
                   <span className="font-mono tabular-nums text-slate-500">
-                    {new Date(e.createdAt).toLocaleString("es-ES")}
+                    {fmtDateTimeEs(e.createdAt)}
                   </span>
                   {e.ip && <span>{e.ip}</span>}
                   <span className="truncate text-slate-600">{e.userAgent}</span>
@@ -448,7 +449,7 @@ function UserRow({
                 <li key={n.id} className="rounded-md bg-slate-900/60 p-2 text-xs">
                   <p className="text-slate-300">{n.body}</p>
                   <p className="mt-1 text-[10px] text-slate-600">
-                    {n.author.name} · {new Date(n.createdAt).toLocaleString("es-ES")}
+                    {n.author.name} · {fmtDateTimeEs(n.createdAt)}
                   </p>
                 </li>
               ))}

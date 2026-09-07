@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, Loader2, Pause, Play, Radar, Search, Tags, X } from "lucide-react";
 import type { BatchJob, ScrapeTask } from "@/generated/prisma/client";
 import { queuedFetch } from "@/lib/fetch-queue";
+import { fmtDateTimeEs } from "@/lib/format";
 
 type BatchJobWithTasks = BatchJob & { tasks: ScrapeTask[] };
 
@@ -298,7 +299,7 @@ export function ScrapeConsole({ initialBatchJobs }: { initialBatchJobs: BatchJob
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <Tags className="h-3.5 w-3.5 text-slate-600" strokeWidth={2} />
                     {batch.zones.length} zona(s) × {batch.keywords.filter(Boolean).length || 1} tipo(s) ·{" "}
-                    {new Date(batch.createdAt).toLocaleString("es-ES")}
+                    {fmtDateTimeEs(batch.createdAt)}
                   </div>
                   <Link
                     href="/businesses"

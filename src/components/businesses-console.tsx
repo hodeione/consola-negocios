@@ -31,6 +31,7 @@ import {
 } from "@/lib/businesses/labels";
 import { BusinessDrawer } from "@/components/business-drawer";
 import { useToast } from "@/components/toast-provider";
+import { fmtDateEs } from "@/lib/format";
 import { DuplicatesModal } from "@/components/duplicates-modal";
 import { ImportExcelModal } from "@/components/import-excel-modal";
 import { AssignByFilterModal } from "@/components/assign-by-filter-modal";
@@ -625,7 +626,7 @@ export function BusinessesConsole({
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-slate-400">
-                    {b.nextFollowUpAt ? new Date(b.nextFollowUpAt).toLocaleDateString("es-ES") : "—"}
+                    {b.nextFollowUpAt ? fmtDateEs(b.nextFollowUpAt) : "—"}
                   </td>
                   <td className="px-3 py-2.5">
                     <DigitalNeedBadge score={b.digitalNeedScore} signals={b.digitalNeedSignals} />

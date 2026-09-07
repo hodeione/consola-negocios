@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2, Table2, TrendingUp, X } from "lucide-react";
 import { queuedFetch } from "@/lib/fetch-queue";
 import { ActiveIdleChart, SimpleDailyChart, CHART_COLORS, fmtHMS } from "@/components/stats-charts";
+import { fmtDateEs, fmtDateTimeEs } from "@/lib/format";
 
 interface DailyPoint {
   date: string;
@@ -28,7 +29,7 @@ interface AgentDetail {
 }
 
 function fmtDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return fmtDateTimeEs(iso, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 export function AgentDetailDrawer({
@@ -71,7 +72,7 @@ export function AgentDetailDrawer({
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-slate-100">{name}</h2>
             <p className="text-xs text-slate-500">
-              {new Date(range.from).toLocaleDateString("es-ES")} — {new Date(range.to).toLocaleDateString("es-ES")}
+              {fmtDateEs(range.from)} — {fmtDateEs(range.to)}
             </p>
           </div>
           <button onClick={onClose} className="flex-shrink-0 rounded-md p-1 text-slate-500 transition hover:bg-slate-900 hover:text-slate-200">
@@ -146,7 +147,10 @@ export function AgentDetailDrawer({
                     <tbody>
                       {detail.daily.map((d) => (
                         <tr key={d.date} className="border-t border-slate-800/70">
-                          <td className="px-3 py-2 text-slate-300">{new Date(d.date + "T00:00:00").toLocaleDateString("es-ES")}</td>
+                          {/* Mediodía UTC, no medianoche: `d.date` ya es el día en hora de
+                              España — a mediodía ningún huso horario cercano lo puede
+                              desplazar al día de al lado al formatearlo. */}
+                          <td className="px-3 py-2 text-slate-300">{fmtDateEs(`${d.date}T12:00:00Z`)}</td>
                           <td className="px-3 py-2 font-mono tabular-nums text-slate-300">{fmtHMS(d.clockedMinutes)}</td>
                           <td className="px-3 py-2 font-mono tabular-nums" style={{ color: CHART_COLORS.active }}>
                             {fmtHMS(d.activeMinutes)}
