@@ -1,7 +1,10 @@
 // Analiza la web de los negocios ya guardados que aún no se han analizado:
 // titular del aviso legal, tecnología, año del ©, tienda/reservas, redes, y
 // recalcula la necesidad digital (que ahora incluye "web antigua").
-// Uso: npx tsx scripts/backfill-web-insights.ts [--limit N]
+// Se ejecuta en local (no en Vercel, para no gastar tiempo de función):
+//   npm run webs:analyze                         (base de datos del .env)
+//   $env:DATABASE_URL="postgresql://...neon..."; npm run webs:analyze   (producción)
+// Opcional: -- --limit N
 // Se puede cortar y relanzar: solo procesa los que tienen webInsightsAt vacío.
 import "dotenv/config";
 import { Client } from "pg";

@@ -253,7 +253,9 @@ export async function fetchHomePage(website: string): Promise<{ html: string; ok
  * (ver src/lib/scraper/digital-need.ts) sin duplicar el fetch.
  */
 /**
- * Titular legal + datos de la web (ver web-insights.ts). Usa la portada ya
+ * Titular legal + datos de la web (ver web-insights.ts). Solo lo llama el
+ * script local scripts/backfill-web-insights.ts — en Vercel no se ejecuta,
+ * para no gastar tiempo de función en las peticiones extra. Usa la portada ya
  * descargada y solo pide aparte el aviso legal: primero los enlaces que haya
  * en la portada y, si no hay, las rutas típicas (/aviso-legal, /legal...).
  */
@@ -283,7 +285,7 @@ export async function fetchWebInsights(website: string, homeHtml: string): Promi
 
 export async function fetchContactInfo(
   website: string
-): Promise<{ emails: string[]; webPhones: string[]; homeHtml: string; homeFetchOk: boolean; insights: WebInsights }> {
+): Promise<{ emails: string[]; webPhones: string[]; homeHtml: string; homeFetchOk: boolean }> {
   const base = website.replace(/\/+$/, "");
   const candidates = [
     base,
@@ -305,7 +307,5 @@ export async function fetchContactInfo(
     for (const p of parsePhonesDeep(html)) webPhones.add(p);
   }
 
-  const insights = await fetchWebInsights(website, homeHtml);
-
-  return { emails: [...emails], webPhones: [...webPhones], homeHtml, homeFetchOk: !!homeHtml, insights };
+  return { emails: [...emails], webPhones: [...webPhones], homeHtml, homeFetchOk: !!homeHtml };
 }

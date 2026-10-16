@@ -4,7 +4,6 @@ import { requireUser } from "@/lib/api-auth";
 import { detailPlacesBatch } from "@/lib/scraper/maps";
 import { fetchContactInfo } from "@/lib/scraper/contact-extract";
 import { computeDigitalNeed } from "@/lib/scraper/digital-need";
-import { EMPTY_INSIGHTS } from "@/lib/scraper/web-insights";
 
 function canAccess(business: { assignedToUserId: string | null; ownerId: string }, user: { id: string; role: string }) {
   if (user.role === "ADMIN") return true;
@@ -53,9 +52,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "No se pudo leer la ficha (puede que ya no esté disponible en Maps)" }, { status: 502 });
   }
 
-  const { emails, webPhones, homeHtml, homeFetchOk, insights } = detail.website
+  const { emails, webPhones, homeHtml, homeFetchOk } = detail.website
     ? await fetchContactInfo(detail.website)
-    : { emails: [], webPhones: [], homeHtml: "", homeFetchOk: false, insights: EMPTY_INSIGHTS };
+    : { emails: [], webPhones: [], homeHtml: "", homeFetchOk: false };
   const { signals, score } = computeDigitalNeed({ website: detail.website, homeHtml, homeFetchOk });
 
   const updated = await prisma.business.update({
@@ -72,8 +71,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       webPhones,
       digitalNeedSignals: signals,
       digitalNeedScore: score,
-      ...insights,
-      webInsightsAt: new Date(),
+      // Si cambió la web, el análisis (titular, tecnología...) queda viejo:
+      // se marca para que lo rehaga el script local backfill-web-insights.
+      ...(detail.website !== business.website && { webInsightsAt: null }),
       lastVerifiedAt: new Date(),
     },
     include: { assignedTo: { select: { id: true, name: true } } },
