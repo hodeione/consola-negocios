@@ -16,6 +16,7 @@ import {
 import { queuedFetch } from "@/lib/fetch-queue";
 import { STATUS_LABEL, STATUS_OPTIONS } from "@/lib/businesses/labels";
 import { useToast } from "@/components/toast-provider";
+import { SalesPitchCard } from "@/components/sales-pitch-card";
 
 interface QueueItem {
   id: string;
@@ -34,6 +35,15 @@ interface QueueItem {
   contactName: string;
   contactRole: string;
   tags: string[];
+  digitalNeedSignals: string[];
+  legalOwnerName: string;
+  legalOwnerType: string;
+  webTech: string;
+  webCopyrightYear: number | null;
+  hasOnlineShop: boolean;
+  hasOnlineBooking: boolean;
+  socialLinks: string[];
+  webInsightsAt: Date | null;
 }
 
 // Mismo color que ya usan los botones "Registrar llamada" del cajón — verde
@@ -135,7 +145,7 @@ export function CallModeConsole({ initialQueue }: { initialQueue: QueueItem[] })
         <div>
           <h1 className="text-lg font-semibold text-slate-100">Nada pendiente por hoy</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {queue.length === 0 ? "No hay negocios con seguimiento para hoy." : "Has llegado al final de la lista de hoy."}
+            {queue.length === 0 ? "No tienes seguimientos para hoy ni negocios nuevos sin llamar." : "Has llegado al final de la lista de hoy."}
           </p>
         </div>
         <Link
@@ -185,6 +195,12 @@ export function CallModeConsole({ initialQueue }: { initialQueue: QueueItem[] })
                 </span>
               )}
               {current.contactName && <span>Contacto: {current.contactName}{current.contactRole ? ` (${current.contactRole})` : ""}</span>}
+              {current.legalOwnerName && (
+                <span className="text-slate-400">
+                  Titular: {current.legalOwnerName}
+                  {current.legalOwnerType && ` (${current.legalOwnerType === "persona" ? "autónomo" : "empresa"})`}
+                </span>
+              )}
             </p>
           </div>
 
@@ -216,6 +232,8 @@ export function CallModeConsole({ initialQueue }: { initialQueue: QueueItem[] })
           </div>
 
           {current.address && <p className="text-xs text-slate-500">{current.address}</p>}
+
+          <SalesPitchCard key={current.id} business={current} phones={[current.mapsPhone, ...current.webPhones]} defaultOpenScript />
 
           <textarea
             value={notes}

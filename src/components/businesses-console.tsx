@@ -28,6 +28,7 @@ import {
   STATUS_BADGE,
   STATUS_LABEL,
   STATUS_OPTIONS,
+  PRODUCT_LABEL,
 } from "@/lib/businesses/labels";
 import { BusinessDrawer } from "@/components/business-drawer";
 import { useToast } from "@/components/toast-provider";
@@ -36,6 +37,7 @@ import { DuplicatesModal } from "@/components/duplicates-modal";
 import { ImportExcelModal } from "@/components/import-excel-modal";
 import { AssignByFilterModal } from "@/components/assign-by-filter-modal";
 import { DigitalNeedBadge } from "@/components/digital-need-badge";
+import { CONFIDENCE_BADGE, recommendSale } from "@/lib/businesses/sales-recommendation";
 
 type AssignedTo = { id: string; name: string } | null;
 export type BusinessRow = Business & { assignedTo: AssignedTo };
@@ -577,6 +579,7 @@ export function BusinessesConsole({
                   sortDir={sortDir}
                   onClick={toggleSort}
                 />
+                <th className="px-3 py-2.5">Vender</th>
                 {isAdmin && <th className="px-3 py-2.5">Asignado</th>}
               </tr>
             </thead>
@@ -630,6 +633,9 @@ export function BusinessesConsole({
                   </td>
                   <td className="px-3 py-2.5">
                     <DigitalNeedBadge score={b.digitalNeedScore} signals={b.digitalNeedSignals} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <RecommendedProductChip business={b} />
                   </td>
                   {isAdmin && (
                     <td className="px-3 py-2.5">
@@ -778,6 +784,19 @@ function SortableTh({
         {active && (sortDir === "asc" ? <ArrowUp className="h-3 w-3" strokeWidth={2.5} /> : <ArrowDown className="h-3 w-3" strokeWidth={2.5} />)}
       </span>
     </th>
+  );
+}
+
+/** Producto recomendado (ver sales-recommendation.ts), con el color de lo clara que es la venta. */
+function RecommendedProductChip({ business }: { business: BusinessRow }) {
+  const rec = recommendSale(business);
+  return (
+    <span
+      title={rec.headline}
+      className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold ${CONFIDENCE_BADGE[rec.confidence].className}`}
+    >
+      {PRODUCT_LABEL[rec.product] ?? rec.product}
+    </span>
   );
 }
 

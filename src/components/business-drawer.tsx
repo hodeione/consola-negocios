@@ -29,6 +29,7 @@ import {
   PRIORITY_OPTIONS,
   PRODUCT_LABEL,
   PRODUCT_OPTIONS,
+  SOCIAL_LABEL,
   STATUS_BADGE,
   STATUS_LABEL,
   STATUS_OPTIONS,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/businesses/labels";
 import { isValidSpanishPhone } from "@/lib/businesses/phone";
 import { DigitalNeedBadge } from "@/components/digital-need-badge";
+import { SalesPitchCard } from "@/components/sales-pitch-card";
 import { useToast } from "@/components/toast-provider";
 import { fmtDateEs, fmtDateTimeEs } from "@/lib/format";
 import type { BusinessRow } from "@/components/businesses-console";
@@ -308,6 +310,15 @@ export function BusinessDrawer({
 
         {business && (
           <div className="flex flex-1 flex-col gap-5 p-5">
+            <SalesPitchCard
+              business={{ ...business, contactName }}
+              phones={[business.mapsPhone, ...business.webPhones]}
+              onUseProduct={(p) => {
+                setProduct(p);
+                showToast("Producto puesto en Venta — guarda para confirmar");
+              }}
+            />
+
             {/* Datos scrapeados (solo lectura) */}
             <section className="surface p-4 text-sm">
               <div className="mb-3 flex items-center justify-between">
@@ -357,6 +368,35 @@ export function BusinessDrawer({
                 <dd>
                   <DigitalNeedBadge score={business.digitalNeedScore} signals={business.digitalNeedSignals} />
                 </dd>
+                <dt className="text-slate-500">Titular</dt>
+                <dd className="text-slate-300">
+                  {business.legalOwnerName ? (
+                    <>
+                      {business.legalOwnerName}
+                      {business.legalOwnerType && (
+                        <span className="ml-1.5 text-slate-500">({business.legalOwnerType === "persona" ? "autónomo" : "empresa"})</span>
+                      )}
+                      {business.legalTaxId && <span className="ml-1.5 font-mono text-[11px] text-slate-500">{business.legalTaxId}</span>}
+                    </>
+                  ) : (
+                    <span className="text-slate-600">{business.webTech ? "no aparece en su web" : "—"}</span>
+                  )}
+                </dd>
+                {business.webTech && (
+                  <>
+                    <dt className="text-slate-500">Su web</dt>
+                    <dd className="flex flex-wrap items-center gap-1.5 text-slate-300">
+                      {business.webTech}
+                      {business.webCopyrightYear && <span className="text-slate-500">· © {business.webCopyrightYear}</span>}
+                      {business.hasOnlineShop && <MiniTag>tienda online</MiniTag>}
+                      {business.hasOnlineBooking && <MiniTag>reservas online</MiniTag>}
+                    </dd>
+                    <dt className="text-slate-500">Redes</dt>
+                    <dd className="text-slate-300">
+                      {business.socialLinks.length > 0 ? business.socialLinks.map((s) => SOCIAL_LABEL[s] ?? s).join(" · ") : <span className="text-slate-600">ninguna enlazada</span>}
+                    </dd>
+                  </>
+                )}
                 <dt className="text-slate-500">Tel. Maps</dt>
                 <dd className="flex items-center gap-1.5 text-slate-300">
                   {business.mapsPhone || "—"}
@@ -764,6 +804,10 @@ export function BusinessDrawer({
       </div>
     </div>
   );
+}
+
+function MiniTag({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">{children}</span>;
 }
 
 function SectionTitle({ children, className = "" }: { children: React.ReactNode; className?: string }) {

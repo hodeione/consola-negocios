@@ -13,6 +13,7 @@ import { collectPlaceLinksStep, detailPlacesBatch, type PlaceDetails } from "./m
 import { fetchContactInfo } from "./contact-extract";
 import { buildDedupeKey } from "./dedupe";
 import { computeDigitalNeed } from "./digital-need";
+import { EMPTY_INSIGHTS, type WebInsights } from "./web-insights";
 import type { ScrapeTask } from "@/generated/prisma/client";
 import type { ScrapeTaskUpdateInput } from "@/generated/prisma/models/ScrapeTask";
 
@@ -75,7 +76,8 @@ async function saveBusinessIfHasContact(
   emails: string[],
   webPhones: string[],
   digitalNeedSignals: string[],
-  digitalNeedScore: number
+  digitalNeedScore: number,
+  insights: WebInsights
 ): Promise<boolean> {
   const hasContact = !!detail.phone || emails.length > 0 || webPhones.length > 0;
   if (!detail.name || !hasContact) return false;
@@ -91,6 +93,8 @@ async function saveBusinessIfHasContact(
       webPhones,
       digitalNeedSignals,
       digitalNeedScore,
+      ...insights,
+      webInsightsAt: new Date(),
       dedupeKey,
       ownerId: task.ownerId,
       assignedToUserId: task.ownerId,
@@ -106,6 +110,8 @@ async function saveBusinessIfHasContact(
       webPhones,
       digitalNeedSignals,
       digitalNeedScore,
+      ...insights,
+      webInsightsAt: new Date(),
       sourceTaskId: task.id,
       lastVerifiedAt: new Date(),
     },
@@ -179,11 +185,11 @@ async function runEnriching(task: ScrapeTask): Promise<TaskPatch> {
   let savedThisBatch = 0;
   await Promise.all(
     batch.map(async (detail) => {
-      const { emails, webPhones, homeHtml, homeFetchOk } = detail.website
+      const { emails, webPhones, homeHtml, homeFetchOk, insights } = detail.website
         ? await fetchContactInfo(detail.website)
-        : { emails: [], webPhones: [], homeHtml: "", homeFetchOk: false };
+        : { emails: [], webPhones: [], homeHtml: "", homeFetchOk: false, insights: EMPTY_INSIGHTS };
       const { signals, score } = computeDigitalNeed({ website: detail.website, homeHtml, homeFetchOk });
-      const saved = await saveBusinessIfHasContact(detail, task, emails, webPhones, signals, score);
+      const saved = await saveBusinessIfHasContact(detail, task, emails, webPhones, signals, score, insights);
       if (saved) savedThisBatch++;
     })
   );

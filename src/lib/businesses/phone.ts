@@ -10,3 +10,15 @@ export function isValidSpanishPhone(raw: string): boolean {
   const digits = raw.replace(/[^\d]/g, "").replace(/^0034|^34/, "");
   return /^[6789]\d{8}$/.test(digits);
 }
+
+/** Móvil español (empieza por 6 o 7) — suele ser un autónomo y admite WhatsApp. */
+export function isSpanishMobile(raw: string): boolean {
+  const digits = raw.replace(/[^\d]/g, "").replace(/^0034|^34/, "");
+  return /^[67]\d{8}$/.test(digits);
+}
+
+/** Enlace wa.me con un mensaje ya escrito, para abrir el chat desde la ficha. */
+export function whatsappLink(raw: string, message: string): string {
+  const digits = raw.replace(/[^\d]/g, "").replace(/^0034|^34/, "");
+  return `https://wa.me/34${digits}?text=${encodeURIComponent(message)}`;
+}

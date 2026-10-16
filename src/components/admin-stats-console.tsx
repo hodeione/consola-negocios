@@ -20,6 +20,7 @@ import { fmtDateEs, fmtDateTimeEs } from "@/lib/format";
 import type { AgentStats } from "@/lib/admin-stats";
 import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
 import { ConversionInsights } from "@/components/conversion-insights";
+import { SalesOverviewPanel } from "@/components/sales-overview-panel";
 import { useToast } from "@/components/toast-provider";
 
 interface TimeEntryRow {
@@ -43,6 +44,7 @@ const RANGE_PRESETS = [
   { label: "Hoy", days: 1 },
   { label: "7 días", days: 7 },
   { label: "30 días", days: 30 },
+  { label: "90 días", days: 90 },
 ];
 
 type SortKey = "revenueInRange" | "callsInRange" | "hoursInRange" | "callsPerHour";
@@ -149,7 +151,7 @@ export function AdminStatsConsole({
             </span>
             <div>
               <h1 className="text-lg font-semibold tracking-tight text-slate-100">Estadísticas</h1>
-              <p className="text-xs text-slate-500">Llamadas y horas fichadas por agente.</p>
+              <p className="text-xs text-slate-500">Ventas, embudo, llamadas y horas fichadas por agente.</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/60 p-1">
@@ -212,6 +214,8 @@ export function AdminStatsConsole({
               />
             ))}
         </div>
+
+        <SalesOverviewPanel range={range} />
 
         {/* ── Fichajes ───────────────────────────────────── */}
         <section className="surface p-5">

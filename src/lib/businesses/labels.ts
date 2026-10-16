@@ -83,9 +83,21 @@ export function completenessScore(b: {
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
   reassigned: "Reasignado",
+  auto_assigned: "Asignado por el reparto diario",
   priority_changed: "Prioridad cambiada",
   status_changed: "Estado cambiado",
   tags_changed: "Etiquetas cambiadas",
   flagged_incorrect: "Marcado como dato incorrecto",
   unflagged_incorrect: "Desmarcado",
+};
+
+// Redes sociales que se detectan enlazadas en la web (ver scraper/web-insights.ts).
+export const SOCIAL_LABEL: Record<string, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  x: "X / Twitter",
+  whatsapp: "WhatsApp",
 };

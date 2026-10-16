@@ -225,6 +225,19 @@ model Business {
   digitalNeedSignals String[] @default([])
   digitalNeedScore   Int      @default(0)
 
+  // Sacado de su web (ver src/lib/scraper/web-insights.ts): titular del
+  // aviso legal, con qué está hecha, año del copyright, si vende/reserva
+  // online y qué redes enlaza. webInsightsAt = cuándo se analizó (null = nunca).
+  legalOwnerName   String    @default("")
+  legalOwnerType   String    @default("") // "persona" | "empresa" | ""
+  legalTaxId       String    @default("")
+  webTech          String    @default("")
+  webCopyrightYear Int?
+  hasOnlineShop    Boolean   @default(false)
+  hasOnlineBooking Boolean   @default(false)
+  socialLinks      String[]  @default([])
+  webInsightsAt    DateTime?
+
   // Gestión / CRM
   status         CallStatus @default(PENDING)
   priority       Priority   @default(MEDIUM)

@@ -5,6 +5,15 @@
  * BeautifulSoup y `fetch` en vez de `aiohttp`.
  */
 import * as cheerio from "cheerio";
+import { isValidSpanishPhone } from "@/lib/businesses/phone";
+import {
+  analyzeHomePage,
+  EMPTY_INSIGHTS,
+  extractLegalOwner,
+  findLegalLinks,
+  LEGAL_FALLBACK_PATHS,
+  type WebInsights,
+} from "./web-insights";
 
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}\b/;
 const EMAIL_RE_G = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,7}\b/g;
@@ -68,10 +77,14 @@ function normalizePhone(raw: string): string {
   return digits ? prefix + digits : "";
 }
 
+// Solo teléfonos españoles plausibles (9 cifras empezando por 6-9, con o sin
+// +34). Antes valía cualquier tira de 7-15 cifras y se colaban IDs, códigos
+// postales y números de seguimiento de páginas como Facebook.
 function isValidPhone(phone: string): boolean {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length >= 7 && digits.length <= 15;
+  return !!phone && isValidSpanishPhone(phone);
 }
+
+const MAX_PHONES = 5;
 
 function parseEmailsDeep(html: string): Set<string> {
   const found = new Set<string>();
@@ -180,14 +193,23 @@ function parsePhonesDeep(html: string): Set<string> {
     if (isValidPhone(norm)) found.add(norm);
   });
 
-  // 4. Regex sobre texto visible (fallback, menos preciso)
-  const text = $("body").text() || $.root().text();
-  for (const m of text.matchAll(PHONE_RE_G)) {
-    const norm = normalizePhone(m[0]);
-    if (isValidPhone(norm)) found.add(norm);
+  // 4. Regex sobre texto visible (fallback, menos preciso) — solo si lo
+  // estructurado no dio nada, para no mezclar números sueltos con los buenos.
+  if (found.size === 0) {
+    const text = $("body").text() || $.root().text();
+    for (const m of text.matchAll(PHONE_RE_G)) {
+      const norm = normalizePhone(m[0]);
+      if (isValidPhone(norm)) found.add(norm);
+    }
   }
 
-  return found;
+  // Mismo número con y sin prefijo cuenta una sola vez.
+  const unique = new Map<string, string>();
+  for (const p of found) {
+    const key = p.replace(/\D/g, "").replace(/^0034|^34/, "");
+    if (!unique.has(key)) unique.set(key, p);
+  }
+  return new Set([...unique.values()].slice(0, MAX_PHONES));
 }
 
 async function fetchHtml(url: string, timeoutMs = 5000): Promise<string> {
@@ -230,9 +252,38 @@ export async function fetchHomePage(website: string): Promise<{ html: string; ok
  * ya la hacíamos, y sirve para calcular si la web está caída/es antigua
  * (ver src/lib/scraper/digital-need.ts) sin duplicar el fetch.
  */
+/**
+ * Titular legal + datos de la web (ver web-insights.ts). Usa la portada ya
+ * descargada y solo pide aparte el aviso legal: primero los enlaces que haya
+ * en la portada y, si no hay, las rutas típicas (/aviso-legal, /legal...).
+ */
+export async function fetchWebInsights(website: string, homeHtml: string): Promise<WebInsights> {
+  if (!homeHtml) return EMPTY_INSIGHTS;
+  const base = website.replace(/\/+$/, "");
+  const home = analyzeHomePage(homeHtml);
+
+  // A veces el titular ya está en el pie de la portada.
+  let owner = extractLegalOwner(homeHtml);
+  if (!owner.legalOwnerName) {
+    const linked = findLegalLinks(homeHtml, base);
+    const urls = linked.length > 0 ? linked : LEGAL_FALLBACK_PATHS.slice(0, 3).map((p) => base + p);
+    const pages = await Promise.all(urls.map((u) => fetchHtml(u)));
+    for (const html of pages) {
+      const found = extractLegalOwner(html);
+      if (found.legalOwnerName) {
+        owner = found;
+        break;
+      }
+      if (!owner.legalTaxId && found.legalTaxId) owner = { ...owner, legalTaxId: found.legalTaxId };
+    }
+  }
+
+  return { ...home, ...owner };
+}
+
 export async function fetchContactInfo(
   website: string
-): Promise<{ emails: string[]; webPhones: string[]; homeHtml: string; homeFetchOk: boolean }> {
+): Promise<{ emails: string[]; webPhones: string[]; homeHtml: string; homeFetchOk: boolean; insights: WebInsights }> {
   const base = website.replace(/\/+$/, "");
   const candidates = [
     base,
@@ -254,5 +305,7 @@ export async function fetchContactInfo(
     for (const p of parsePhonesDeep(html)) webPhones.add(p);
   }
 
-  return { emails: [...emails], webPhones: [...webPhones], homeHtml, homeFetchOk: !!homeHtml };
+  const insights = await fetchWebInsights(website, homeHtml);
+
+  return { emails: [...emails], webPhones: [...webPhones], homeHtml, homeFetchOk: !!homeHtml, insights };
 }

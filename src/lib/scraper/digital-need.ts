@@ -8,6 +8,8 @@
  * más números que ese negocio de verdad necesite algo del catálogo.
  */
 
+import { detectCopyrightYear } from "./copyright-year";
+
 const SOCIAL_ONLY_HOSTS = [
   "facebook.com",
   "instagram.com",
@@ -25,11 +27,12 @@ export const DIGITAL_NEED_LABEL: Record<string, string> = {
   web_caida: "Web caída",
   sin_ssl: "Sin SSL",
   no_responsive: "No responsive",
+  web_antigua: "Web antigua",
 };
 
 // Orden de severidad, de más a menos determinante — para mostrar primero la
 // señal que más pesa cuando solo cabe una en la interfaz.
-export const DIGITAL_NEED_SIGNALS = ["sin_web", "web_red_social", "web_caida", "sin_ssl", "no_responsive"] as const;
+export const DIGITAL_NEED_SIGNALS = ["sin_web", "web_red_social", "web_caida", "sin_ssl", "no_responsive", "web_antigua"] as const;
 
 const SIGNAL_WEIGHT: Record<string, number> = {
   sin_web: 40,
@@ -37,7 +40,11 @@ const SIGNAL_WEIGHT: Record<string, number> = {
   web_caida: 30,
   sin_ssl: 15,
   no_responsive: 15,
+  web_antigua: 10,
 };
+
+// Copyright de hace 5 años o más: nadie la ha tocado en mucho tiempo.
+const OLD_WEB_YEARS = 5;
 
 function hostnameOf(url: string): string {
   try {
@@ -76,6 +83,8 @@ export function computeDigitalNeed(input: DigitalNeedInput): DigitalNeedResult {
     } else {
       if (website.toLowerCase().startsWith("http://")) signals.push("sin_ssl");
       if (input.homeHtml && !/<meta[^>]+name=["']viewport["']/i.test(input.homeHtml)) signals.push("no_responsive");
+      const year = detectCopyrightYear(input.homeHtml);
+      if (year && new Date().getFullYear() - year >= OLD_WEB_YEARS) signals.push("web_antigua");
     }
   }
 
